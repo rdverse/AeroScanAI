@@ -16,9 +16,10 @@ with app_tab:
     col11, col22 = st.columns(2)
 
     with col11:
-        image = Image.open('./assets/qaqc.png')
-        st.image(image)
-        
+        #image = Image.open('./assets/qaqc.png')
+        #st.image(image)
+        st.markdown("text")
+                    
     with col22:
         st.markdown(
             """
@@ -39,18 +40,18 @@ with app_tab:
     )
 
     # Input data
-    data_file = st.text_input('Training Data File Path', key='data', value='./store/datasets/patient_readmission/train.csv')
+    data_file = st.text_input('Training Data File Path', key='data', value='./box/datasets/defect_classify/train.csv')
     window_size = st.number_input('Window', min_value=50, max_value=200, value=125, step=5)
     lag_size = st.slider('Lagging Window', min_value=5, max_value=50, value=25, step=5)
     epochs = st.number_input('Epochs', min_value=1, max_value=100, step=1, value=5)
     batch_size = st.number_input('Batch Size', min_value=100, max_value=1000, step=1, value=512)
-    model_path = st.text_input('Model Save Path', key='model path', value='./store/models/patient_readmission/model.pb')
+    model_path = st.text_input('Model Save Path', key='model path', value='./box/models/defect_classify/model.pb')
     test_size = st.slider('Percentage of data saved for Testing', min_value=0.10, max_value=0.90, value=0.30, step=0.05)
 
     # Button to train the model
     if st.button('Train Model', key='training'):
         # Build the request
-        URL = 'http://patient_readmission:5001/train'
+        URL = 'http://defect_classify:5001/train'
         DATA = {
             'filepath': data_file,
             'window': window_size,
@@ -81,9 +82,9 @@ with app_tab:
     )
 
     # Inference inputs
-    selected_model_path = st.text_input('Selected Model Path', key='demand forecaster model', value='./store/models/patient_readmission/model.pb')
-    analysis_save_path = st.text_input('Forecast Demand Analysis Save Path', value='./store/outputs/patient_readmission/')
-    input_data = st.text_input('Input Data Path', value='./store/datasets/patient_readmission/test.csv')
+    selected_model_path = st.text_input('Selected Model Path', key='demand forecaster model', value='./box/models/defect_classify/model.pb')
+    analysis_save_path = st.text_input('Forecast Demand Analysis Save Path', value='./box/outputs/defect_classify/')
+    input_data = st.text_input('Input Data Path', value='./box/datasets/defect_classify/test.csv')
     inf_window_size = st.number_input('Window', min_value=50, max_value=200, value=125, step=5, key='demand forecaster window')
     inf_lag_size = st.slider('Lagging Window', min_value=5, max_value=50, value=25, step=5, key='demand forecaster lag window')
     inf_batch_size = st.number_input('Batch Size', min_value=100, max_value=1000, step=1, value=512, key='demand forecaster batch')
@@ -92,7 +93,7 @@ with app_tab:
     # Button to run the inference
     if st.button('Run Patient Readmission Prediction Analysis', key='analysis'):
         # Build the request
-        URL = 'http://patient_readmission:5001/predict'
+        URL = 'http://defect_classify:5001/predict'
         DATA = {
             'keras_saved_model_dir': selected_model_path,
             'output_saved_dir': selected_model_path,
