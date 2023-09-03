@@ -11,20 +11,16 @@ app_tab, help_tab = st.tabs(["Application", "Help"])
 # "Application" tab
 
 with app_tab:
-
     # Header image
     col11, col22 = st.columns(2)
-
     with col11:
         #image = Image.open('./assets/qaqc.png')
         #st.image(image)
         st.markdown("text")
-                    
     with col22:
         st.markdown(
             """
-            ##### This app predicts the probability of a patient being readmitted to the hospital within a certain period of time after discharge.
-            It uses a machine learning model that is trained on historical medical data.
+            ##### Detect defect in fuselages
             """
         )
 
@@ -38,7 +34,6 @@ with app_tab:
         #### Aero defect classification model training
         """
     )
-
     # Input data
     data_file = st.text_input('Training Data File Path', key='data', value='./box/datasets/defect_classify/train.csv')
     window_size = st.number_input('Window', min_value=50, max_value=200, value=125, step=5)
@@ -55,7 +50,7 @@ with app_tab:
         URL = 'http://defect_classify:5001/train'
     
         DATA = {'file':data_file, 'model_name':model_name, 'model_path':model_path, 
-                  'test_size': test_size, 'ncpu': 4}
+                  'test_size': test_size, 'ncpu': 1}
         print(DATA)
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
         print(TRAINING_RESPONSE)
@@ -87,34 +82,27 @@ with app_tab:
 
     col21, col22, col23 = st.columns(3)
 
-    # default
-    manufacturer_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
-    model_list = ['Gen1', 'Gen2', 'Gen3', 'Gen4']
-    lubrication_type_list = ['LTA', 'LTB', 'LTC']
-    product_assignment_list = ['PillA', 'PillB', 'PillC']
-
+    
     with col21:
-        manufacturer = st.selectbox('Manufacturer', manufacturer_list)
-        generation = st.selectbox('Generation', model_list)
-        age = st.number_input('Robot Age', min_value=0, max_value=25, step=1, value=0)
-
+        st.info("Inspector's Input")
+        backwall = st.selectbox('Backwall', [0,1])
+        ramp = st.selectbox('Ramp', [0,1])
+        frontwall = st.selectbox('Frontwall', [0,1])
+        geometry = st.selectbox('Geometry', [0,1])
     with col22:
-        temperature = st.number_input('Temperature', min_value=50, max_value=300, step=1)
-        motor_current = st.number_input('Motor Current', min_value=0.00, max_value=10.00, step=.05, value=5.00)
-        lubrication_type = st.selectbox('Lubrication Type', lubrication_type_list)
-    with col23:
-        last_maintenance = st.number_input('Last Maintenance', min_value=0, max_value=60, step=1)
-        num_repairs = st.number_input('Repair Counts', min_value=0, max_value=50, step=1)
-        product_assignment = st.selectbox('Pill Product Assignment', product_assignment_list)
-        
-        
-    sample = [{'Age':age, 'Temperature':temperature, 'Last_Maintenance':last_maintenance, 'Motor_Current':motor_current,
-       'Number_Repairs':num_repairs, 'Manufacturer':manufacturer, 
-       'Generation':generation,'Lubrication':lubrication_type, 'Product_Assignment':product_assignment}]
+        st.info("waveform characteristics")
+        no_peaks = st.number_input('Number of Peaks', min_value=0, max_value=10, step=1)
+        noise = st.number_input('Noise', min_value=0.00, max_value=10.00, step=.05, value=5.00)
+        max = st.number_input('Maximum Value', min_value=0.00, max_value=10.00, step=.05, value=5.00)
+        min = st.number_input('Minimum Value', min_value=0.00, max_value=10.00, step=.05, value=5.00)
+        signal_noise_ratio = st.number_input('Signal-to-Noise Ratio', min_value=0.00, max_value=10.00, step=.05, value=5.00)
+    #sample = [{'backwall':1, 'frontwall':1, 'ramp':1, 'geometry':1, 'no_peaks':1, 'noise':1, 'max':1, 'min':1, 'signal_noise_ratio':1}]
+    
+    sample = [{'backwall':backwall, 'frontwall':frontwall, 'ramp':ramp, 'geometry':geometry, 'no_peaks':no_peaks, 'noise':noise, 'max':max, 'min':min, 'signal_noise_ratio':signal_noise_ratio}]
 
     if st.button('Run Maintenance Analysis', key='analysis'):
         URL = 'http://defect_classify:5001/predict'
-        DATA = {'sample':sample, 'model':model_path, 'num_class':3}
+        DATA = {'data':sample, 'model_path':model_path, 'num_class':3}
         INFERENCE_RESPONSE = requests.post(url = URL, json = DATA)
         st.info("another trail")
         st.info(INFERENCE_RESPONSE)
@@ -124,7 +112,22 @@ with app_tab:
             st.info(INFERENCE_RESPONSE.text)
         else:
             st.success(str(INFERENCE_RESPONSE.json().get('Maintenance Recommendation')))
-            
+    
+    data_path ="./box/datasets/defect_classify/train.csv"
+    #For appending data    
+    target = st.selectbox('Select defect category before append', [0,1,2])
+    sample_append = [{'backwall':backwall, 'frontwall':frontwall, 'ramp':ramp, 'geometry':geometry, 'no_peaks':no_peaks, 'noise':noise, 'max':max, 'min':min, 'signal_noise_ratio':signal_noise_ratio, "defect": target}]
+    if st.button('Append data', key='append'):
+        URL = 'http://defect_classify:5001/append_data'
+        DATA = {'data_path':data_path, 'data':sample_append}
+        DATAAPPEND_RESPONSE = requests.post(url = URL, json = DATA)
+        st.info("Appending new data point")
+        st.info(DATAAPPEND_RESPONSE.text)
+        if len(DATAAPPEND_RESPONSE.text) < 40:       
+            st.error("Model Training Failed")
+            st.info(DATAAPPEND_RESPONSE.text)
+        else:
+            st.success(str(DATAAPPEND_RESPONSE.json()))#.get('Maintenance Recommendation')))
 # Help tab frontend below
     
 with help_tab:
