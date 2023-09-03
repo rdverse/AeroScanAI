@@ -1,7 +1,7 @@
 version: '3'
 services:
 
-  app_frontend:
+  app_ui:
     build:
       context: ../app_ui/
       dockerfile: Dockerfile
