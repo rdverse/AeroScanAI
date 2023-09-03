@@ -1,0 +1,23 @@
+version: '3'
+services:
+  defect_classify:
+    build:
+      context: ../defect_classify/
+      dockerfile: Dockerfile
+    ports:
+      - 5001:5001
+    volumes:
+      - ../box:/defect_classify/box
+      - ../defect_classify:/defect_classify
+    restart: on-failure
+  
+  app_ui:
+    build:
+      context: ../app_ui/
+      dockerfile: Dockerfile
+    ports:
+      - 5005:5005
+    volumes:
+      - ../box:/app_ui/box
+      - ../app_ui:/app_ui
+    restart: on-failure
