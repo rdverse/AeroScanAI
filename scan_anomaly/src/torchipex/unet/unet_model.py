@@ -1,7 +1,10 @@
 from .unet_parts import *
+from unet_parts import *
 from torch.utils.checkpoint import checkpoint
+# importing torch from unet parts
 
 class UNet(nn.Module):
+    # if time permits add frontend for binary classification=True
     def __init__(self, n_channels, n_classes, bilinear=False, binary=False, imgdim=64):
         super(UNet, self).__init__()
         self.binary = binary
