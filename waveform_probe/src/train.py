@@ -6,17 +6,18 @@ Module to train and prediction using XGBoost Classifier
 # !/usr/bin/env python
 # coding: utf-8
 # pylint: disable=import-error
-import daal4py as d4p
 import sys
 import numpy as np
-import xgboost as xgb
 import pandas as pd 
 import logging
 import warnings
 import joblib
+import time
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import RobustScaler
+from sklearn.model_selection import train_test_split, GridSearchCV  # pylint: disable=C0415
+from sklearn.ensemble import RandomForestClassifier  # pylint: disable=C0415
+from sklearn import metrics  # pylint: disable=C0415
 from sklearnex import patch_sklearn
 patch_sklearn()
 
@@ -29,15 +30,13 @@ class DefectClassify():
     def __init__(self, model_name: str):
         self.model_name = model_name
         self.file = ''
+        self.X_train = ''
+        self.X_test = ''
         self.y_train = ''
         self.y_test = ''
-        self.X_train_scaled_transformed = ''
-        self.X_test_scaled_transformed = ''
-        self.d4p_model = ''
-        self.accuracy_score = ''
+        self.bench_dict = {}
         self.model_path = ''
-        self.parameters = ''
-        self.robust_scaler = ''
+        self.hypparameters = ''
         
     def process_data(self, file: str, test_size: int = .25):
         """_summary_
@@ -52,54 +51,50 @@ class DefectClassify():
 
         # Generating our data
         logger.info('Reading the dataset from %s...', file)
-        try:
-            data = pd.read_pickle(file)
-        except FileNotFoundError:
-            sys.exit(f'Data loading error, file not found at {file}')
+        # try:
+        #     data = pd.read_pickle(file)
+        # except FileNotFoundError:
+        #     # pass
+        #     sys.exit(f'Data loading error, file not found at {file}')
 
+        data = np.random.randint(low=0, high=20, size=(1000, 10))
+        X = data
+        y = np.random.randint(low=0, high=1, size=(1000, 1))
+        #X = data.drop('defect', axis=1)
+        #y = data.defect
 
-        X = data.drop('defect', axis=1)
-        y = data.defect
-
-        X_train, X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
-
-        df_num_train = X_train.select_dtypes(['float', 'int', 'int32'])
-        df_num_test = X_test.select_dtypes(['float', 'int', 'int32'])
-        self.robust_scaler = RobustScaler()
-        X_train_scaled = self.robust_scaler.fit_transform(df_num_train)
-        X_test_scaled = self.robust_scaler.transform(df_num_test)
-
-        # Making them pandas dataframes
-        self.X_train_scaled_transformed = pd.DataFrame(X_train_scaled,
-                                                  index=df_num_train.index,
-                                                  columns=df_num_train.columns)
-        self.X_test_scaled_transformed = pd.DataFrame(X_test_scaled,
-                                                 index=df_num_test.index,
-                                                 columns=df_num_test.columns)
-
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
         
-        #del X_train_scaled_transformed['Number_Repairs']
+    def grid_search(self, ncpu: int = 1):
+        """_summary_
 
-        #del X_test_scaled_transformed['Number_Repairs']
-
-        # Dropping the unscaled numerical columns
-        # X_train = X_train.drop(['Age', 'Temperature', 'Last_Maintenance', 'Motor_Current'], axis=1)
-        # X_test = X_test.drop(['Age', 'Temperature', 'Last_Maintenance', 'Motor_Current'], axis=1)
-        
-        # X_train = X_train.astype(int)
-        # X_test = X_test.astype(int)
-
-        # # Creating train and test data with scaled numerical columns
-        # X_train_scaled_transformed = pd.concat([X_train_scaled_transformed, X_train], axis=1)
-        # X_test_scaled_transformed = pd.concat([X_test_scaled_transformed, X_test], axis=1)
-
-        # self.X_train_scaled_transformed = X_train_scaled_transformed.astype(
-        #                                 {'Motor_Current': 'float64'})
-        # self.X_test_scaled_transformed = X_test_scaled_transformed.astype(
-        #                                 {'Motor_Current': 'float64'})
-        
-        
-
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        #Hyperparameters
+        params = {
+            'n_estimators': [10, 50, 100],
+            'max_leaf_nodes': [None, 3, 10, 15],
+            'max_features': [None, 'sqrt'],
+            'max_depth': [None, 3, 5, 8]
+        }
+        self.bench_dict = {}
+        # Run grid search
+        start_time = time.time()
+        model_rf = GridSearchCV(RandomForestClassifier(
+                criterion='gini', max_depth=None, n_jobs=ncpu, oob_score=True, random_state=42), param_grid=params, cv=5)
+        # fit model
+        model_rf.fit(self.X_train, self.y_train, n_jobs=ncpu)
+        # save grid search time
+        self.bench_dict["grid_search_time"] = time.time()-start_time
+        # get best estimator
+        self.model_rf = model_rf.best_estimator_
+        # save hyperparameters
+        self.hypparameters = self.model_rf.get_params()
+        return self.bench_dict
+    
     def train(self, ncpu: int = 1):
         """_summary_
 
@@ -107,29 +102,17 @@ class DefectClassify():
         ----------
         ncpu : int, optional
             _description_, by default 1
-        """
-        
+        """        
         # Set xgboost parameters
-        self.parameters = {
-        'max_bin': 256,
-        'scale_pos_weight': 2,
-        'lambda_l2': 1,
-        'alpha': 0.9,
-        'max_depth': 3,
-        'num_leaves': 2**3,
-        'verbosity': 0,
-        'objective': 'multi:softmax',
-        'learning_rate': 0.3,
-        'num_class': 3,
-        'nthread': ncpu
-        }
-        
-        xgb_train = xgb.DMatrix(self.X_train_scaled_transformed, label=np.array(self.y_train))
-    
-        xgb_model = xgb.train(self.parameters, xgb_train, num_boost_round=20)
-        self.d4p_model = d4p.get_gbt_model_from_xgboost(xgb_model)
-        print(xgb_model.get_fscore())
-        return xgb_model.get_fscore()
+        # Run grid search first to load the model
+        self.grid_search(ncpu= ncpu)
+        # Train the model
+        start_time = time.time()
+        self.model_rf.fit(self.X_train, self.y_train)
+        # save training time        
+        self.bench_dict["training_time"] = time.time()-start_time
+        return self.bench_dict
+
 
     def validate(self):
         """_summary_
@@ -139,21 +122,26 @@ class DefectClassify():
         _type_
             _description_
         """
-        daal_predict_algo = d4p.gbt_classification_prediction( 
-            nClasses=self.parameters["num_class"],
-            resultsToEvaluate="computeClassLabels",
-            fptype='float')
-            
-        daal_prediction = daal_predict_algo.compute(self.X_test_scaled_transformed, self.d4p_model)
-        
-        daal_errors_count  = np.count_nonzero(daal_prediction.prediction[:, 0] - np.ravel(self.y_test))
-        self.d4p_acc = abs((daal_errors_count  / daal_prediction.prediction.shape[0]) - 1)
-        
+        individual_stream_times = []
+        preds = {}
+        # Run inference on 10 samples
+        for i in range(10):  # pylint: disable=C0415,W0612
+            sample_x = self.X_test[np.random.randint(0, len(self.X_test), 1)]
+            start_time = time.time()
+            y_pred = self.model_rf.predict(sample_x)
+            individual_stream_times.append(time.time()-start_time)
+        avg_stream_time = sum(individual_stream_times) / len(individual_stream_times)
+        self.bench_dict["Average_Inference_latency"] = avg_stream_time
 
-        print('=====> XGBoost Daal accuracy score %f', self.d4p_acc)
-        print('DONE')
-        print(f"model predictions are {daal_prediction.prediction[:, 0]}")
-        return self.d4p_acc
+        start_time = time.time()
+        y_pred = self.model_rf.predict(self.X_test)
+        self.bench_dict["Inference_time_test"] = time.time()-start_time
+        self.bench_dict["Accuracy_test"] = metrics.accuracy_score(self.y_test, y_pred)
+        self.bench_dict["F1_test"] = metrics.f1_score(self.y_test, y_pred, average='macro')
+        # dont need to return the predictions
+        preds = dict(zip(self.X_test.index, y_pred))
+        print(preds)
+        return self.bench_dict
     
     def save(self, model_path):
         """_summary_
@@ -164,15 +152,10 @@ class DefectClassify():
             _description_
         """
         self.model_path = model_path +  self.model_name + '.joblib'
-        self.scaler_path = model_path +  self.model_name + '_scaler.joblib'
         
         logger.info("Saving model")
         with open( self.model_path, "wb") as fh:
             joblib.dump(self.d4p_model, fh.name)
-        
-        logger.info("Saving Scaler")
-        with open( self.scaler_path, "wb") as fh:
-            joblib.dump(self.robust_scaler, fh.name)
-    
-        return self.model_path, self.scaler_path
+
+        return self.model_path
     
