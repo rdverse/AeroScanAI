@@ -12,15 +12,22 @@ import intel_extension_for_pytorch as ipex
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import balanced_accuracy_score, f1_score
+import simulatedDataset
 
 class TrainModel(): 
-    def __init__(self, model, img_dim, n_samples,percenttest, mode) -> None:
+    def __init__(self, model,mode) -> None:
         self.train_loader = []
         self.test_loader = []
         self.model = model
         #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
  
-    def load_data(self): 
+    def load_data(self, n_samples, img_dim,  percenttest, batch_size, num_workers):
+        self.n_samples = n_samples
+        self.percenttest = percenttest  
+        self.batch_size = batch_size    
+        self.num_workers = num_workers  
+        self.img_dim = img_dim
+        
         n_train_samples = int(self.n_samples * (1 - self.percenttest))
         n_val_samples = int(self.n_samples * (self.percenttest))
         n_test_samples = n_val_samples
