@@ -5,7 +5,7 @@ services:
       context: ../waveform_probe/
       dockerfile: Dockerfile
     ports:
-      - 5001:5001
+      - 5002:5002
     volumes:
       - ../box:/waveform_probe/box
       - ../waveform_probe:/waveform_probe
