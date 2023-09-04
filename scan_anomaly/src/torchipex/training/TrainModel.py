@@ -76,6 +76,7 @@ class TrainModel():
             #         inputs, labels = data_augmentation(inputs1, labels1)
             #     inputs = inputs.to(self.device)
             #     labels = labels.to(self.device)
+            # batch iteration
             for inputs, labels in self.train_loader:
                 optimizer.zero_grad()
                 masks = self.model(inputs)
@@ -99,92 +100,92 @@ class TrainModel():
         return epoch_loss, epoch_acc
    
    
-    # PRACTICALLY DONT NEED THIS FUNCTION IN ACTIVE INFERENCE 
-    def evaluate(self):
-        """
-        This module will be responsible for evaluating the trained model and calculate the accuracy
-        Script to evaluate a model after training.
-        Outputs accuracy and balanced accuracy, draws confusion matrix.
-        """
+    # # PRACTICALLY DONT NEED THIS FUNCTION IN ACTIVE INFERENCE 
+    # def evaluate(self):
+    #     """
+    #     This module will be responsible for evaluating the trained model and calculate the accuracy
+    #     Script to evaluate a model after training.
+    #     Outputs accuracy and balanced accuracy, draws confusion matrix.
+    #     """
 
-        self.model.to(self.device)
-        self.model.eval()
+    #     self.model.to(self.device)
+    #     self.model.eval()
 
-        y_true = np.empty(shape=(0,))
-        y_pred = np.empty(shape=(0,))
+    #     y_true = np.empty(shape=(0,))
+    #     y_pred = np.empty(shape=(0,))
 
-        for inputs, labels in self.test_loader:
-            inputs = inputs.to()
-            labels = labels.to()
-            start_time = time.time()
-            preds_probs = self.model(inputs)[0]
-            infer_time = time.time()-start_time
-            print('infer_time_per_sample=', infer_time)
-            preds_class = torch.argmax(preds_probs, dim=-1)
-            labels = labels.to("cpu").numpy()
-            preds_class = preds_class.detach().to("cpu").numpy()
-            y_true = np.concatenate((y_true, labels))
-            y_pred = np.concatenate((y_pred, preds_class))
+    #     for inputs, labels in self.test_loader:
+    #         inputs = inputs.to()
+    #         labels = labels.to()
+    #         start_time = time.time()
+    #         preds_probs = self.model(inputs)[0]
+    #         infer_time = time.time()-start_time
+    #         print('infer_time_per_sample=', infer_time)
+    #         preds_class = torch.argmax(preds_probs, dim=-1)
+    #         labels = labels.to("cpu").numpy()
+    #         preds_class = preds_class.detach().to("cpu").numpy()
+    #         y_true = np.concatenate((y_true, labels))
+    #         y_pred = np.concatenate((y_pred, preds_class))
 
-        accuracy = f1_score(y_true, y_pred)
-        balanced_accuracy = balanced_accuracy_score(y_true, y_pred)
+    #     accuracy = f1_score(y_true, y_pred)
+    #     balanced_accuracy = balanced_accuracy_score(y_true, y_pred)
 
-        print("f1 Accuracy Score: ", accuracy)
-        print("Balanced Accuracy: ", balanced_accuracy)
+    #     print("f1 Accuracy Score: ", accuracy)
+    #     print("Balanced Accuracy: ", balanced_accuracy)
 
-        return accuracy, balanced_accuracy
+    #     return accuracy, balanced_accuracy
     
-    # NOT LOCALIZING ANYTHING IN ACTIVE INFERENCE
-    def predict_localize(self, thres=0.8, n_samples=9, show_heatmap=False):
-        """
-        Runs predictions for the samples in the dataloader.
-        Shows image, its true label, predicted label and probability.
-        If an anomaly is predicted, draws bbox around defected region and heatmap.
-        """
-        self.model.to(self.device)
-        self.model.eval()
+    # # NOT LOCALIZING ANYTHING IN ACTIVE INFERENCE
+    # def predict_localize(self, thres=0.8, n_samples=9, show_heatmap=False):
+    #     """
+    #     Runs predictions for the samples in the dataloader.
+    #     Shows image, its true label, predicted label and probability.
+    #     If an anomaly is predicted, draws bbox around defected region and heatmap.
+    #     """
+    #     self.model.to(self.device)
+    #     self.model.eval()
 
-        transform_to_pil = transforms.ToPILImage()
+    #     transform_to_pil = transforms.ToPILImage()
 
-        n_cols = 4
-        n_rows = int(np.ceil(n_samples / n_cols))
-        plt.figure(figsize=[n_cols * 5, n_rows * 5])
+    #     n_cols = 4
+    #     n_rows = int(np.ceil(n_samples / n_cols))
+    #     plt.figure(figsize=[n_cols * 5, n_rows * 5])
 
-        counter = 0
-        for inputs, _ in self.test_loader:
-            inputs = inputs.to(self.device)
-            out = self.model(inputs)
-            _, class_preds = torch.max(out[0], dim=-1)
-            feature_maps = out[1].to(self.device)
+    #     counter = 0
+    #     for inputs, _ in self.test_loader:
+    #         inputs = inputs.to(self.device)
+    #         out = self.model(inputs)
+    #         _, class_preds = torch.max(out[0], dim=-1)
+    #         feature_maps = out[1].to(self.device)
 
-            for img_i in range(inputs.size(0)):
-                img = transform_to_pil(inputs[img_i])
-                class_pred = class_preds[img_i]
-                heatmap = feature_maps[img_i][self.neg_class].detach().cpu().numpy()
+    #         for img_i in range(inputs.size(0)):
+    #             img = transform_to_pil(inputs[img_i])
+    #             class_pred = class_preds[img_i]
+    #             heatmap = feature_maps[img_i][self.neg_class].detach().cpu().numpy()
 
-                counter += 1
-                plt.subplot(n_rows, n_cols, counter)
-                plt.imshow(img)
-                plt.axis("off")
+    #             counter += 1
+    #             plt.subplot(n_rows, n_cols, counter)
+    #             plt.imshow(img)
+    #             plt.axis("off")
 
-                if class_pred == self.neg_class:
-                    x_0, y_0, x_1, y_1 = get_bbox_from_heatmap(heatmap, thres)
-                    rectangle = Rectangle(
-                        (x_0, y_0),
-                        x_1 - x_0,
-                        y_1 - y_0,
-                        edgecolor="red",
-                        facecolor="none",
-                        lw=3,
-                    )
-                    plt.gca().add_patch(rectangle)
-                    if show_heatmap:
-                        plt.imshow(heatmap, cmap="Reds", alpha=0.3)
+    #             if class_pred == self.neg_class:
+    #                 x_0, y_0, x_1, y_1 = get_bbox_from_heatmap(heatmap, thres)
+    #                 rectangle = Rectangle(
+    #                     (x_0, y_0),
+    #                     x_1 - x_0,
+    #                     y_1 - y_0,
+    #                     edgecolor="red",
+    #                     facecolor="none",
+    #                     lw=3,
+    #                 )
+    #                 plt.gca().add_patch(rectangle)
+    #                 if show_heatmap:
+    #                     plt.imshow(heatmap, cmap="Reds", alpha=0.3)
 
-                if counter == n_samples:
-                    plt.tight_layout()
-                    plt.show()
-                    return
+    #             if counter == n_samples:
+    #                 plt.tight_layout()
+    #                 plt.show()
+    #                 return
     
     # ADD ADDITIONAL LAYERS HERE IF USING BOTH ACTIVE AND SUPERVISED LEARNING
     def save_model(self, model_path):
