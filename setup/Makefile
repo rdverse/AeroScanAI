@@ -24,11 +24,14 @@ setup-box-defect_classify:
 	# create output folder 
 	mkdir -p ../box/outputs/defect_classify
 
+# GENERAL INSTALL
+install-tools: install-python install-python-packages install-dockertools
+
+# FOR DEFECT CLASSIFY
 create-synthethic-data:
 	python3 ../defect_classify/src/utils/generate_data.py --save_path '../box/datasets/defect_classify/'
 
-install-tools: install-python install-python-packages install-dockertools
-
+#######DEFECT CLASSIFY#################
 launch-defect_classify: setup-box-defect_classify create-synthethic-data 
 	docker-compose -f docker-compose-defect_classify.yaml -p dc up
 
@@ -38,6 +41,20 @@ launch-defect_classify_no_data:
 shutdown-defect_classify:
 	docker-compose -f docker-compose-defect_classify.yaml -p dc down
 
+###########WAVEFORM PROBE#################
+launch-waveform_probe: 
+	docker-compose -f docker-compose-waveform_probe.yaml -p wp up
+
+launch-waveform_probe_no_data: 
+	docker-compose -f docker-compose-waveform_probe.yaml -p wp up
+
+shutdown-waveform_probe:
+	docker-compose -f docker-compose-waveform_probe.yaml -p wp down
+
+	
+############ DEFECT CLASSIFY AND WAVEFORM PROBE #################
+
+#######APP UI#################
 launch-app_ui: 
 	docker-compose -f docker-compose-app_ui.yaml -p aui up
 
