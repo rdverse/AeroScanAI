@@ -6,13 +6,10 @@ import matplotlib.pyplot as plt
 import torch
 import logging
 import intel_extension_for_pytorch as ipex
-
 # from ipex.training.MvtecAdDataset import MvtecAdDataset
 # from ipex.utils.base_model import AbstractModelInference, AbstractModelTraining
 # from ipex.utils.utils import data_augmentation, plot_confusion_matrix, get_bbox_from_heatmap
-
 from torch.utils.data import DataLoader
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import balanced_accuracy_score, f1_score
 
@@ -100,8 +97,10 @@ class TrainModel():
                     break
         
         return epoch_loss, epoch_acc
-    
-    def evaluate(self, class_names="auto", labels=True):
+   
+   
+    # PRACTICALLY DONT NEED THIS FUNCTION IN ACTIVE INFERENCE 
+    def evaluate(self):
         """
         This module will be responsible for evaluating the trained model and calculate the accuracy
         Script to evaluate a model after training.
@@ -135,7 +134,7 @@ class TrainModel():
 
         return accuracy, balanced_accuracy
     
-    
+    # NOT LOCALIZING ANYTHING IN ACTIVE INFERENCE
     def predict_localize(self, thres=0.8, n_samples=9, show_heatmap=False):
         """
         Runs predictions for the samples in the dataloader.
@@ -187,5 +186,6 @@ class TrainModel():
                     plt.show()
                     return
     
+    # ADD ADDITIONAL LAYERS HERE IF USING BOTH ACTIVE AND SUPERVISED LEARNING
     def save_model(self, model_path):
         torch.save(self.model, model_path)
