@@ -59,7 +59,7 @@ class WaveformProbe():
 
         data = np.random.randint(low=0, high=20, size=(1000, 10))
         X = data
-        y = np.random.randint(low=0, high=1, size=(1000, 1))
+        y = np.random.randint(low=0, high=2, size=(1000, 1))
         #X = data.drop('defect', axis=1)
         #y = data.defect
 
@@ -75,10 +75,10 @@ class WaveformProbe():
         """
         #Hyperparameters
         params = {
-            'n_estimators': [10, 50, 100],
-            'max_leaf_nodes': [None, 3, 10, 15],
+            'n_estimators': [10 ],
+            'max_leaf_nodes': [None, 3],
             'max_features': [None, 'sqrt'],
-            'max_depth': [None, 3, 5, 8]
+            'max_depth': [None, 3, ]
         }
         self.bench_dict = {}
         # Run grid search
