@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 
 class PredictionPayload(BaseModel):
-    data: list
+    x_coord: int
+    y_coord: int
     model_path: str
+    data_path: str
     num_class: int = 2
     # remove scaler since random forest won't have much influence of scaling features
     

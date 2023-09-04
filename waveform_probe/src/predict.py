@@ -29,7 +29,7 @@ class WaveInference():
                 self.dataset = joblib.load(fh.name)
         else:
             self.dataset = np.random.randint(low=0, high=20, size=(1000, 10))
-            self.labels = np.random.randint(low=0, high=1, size=(1000, 1))    
+            self.labels = np.random.randint(low=0, high=2, size=(1000, 1))    
             
     def inference(self, x_coord, y_coord):
         self.data = get_data(x_coord, y_coord)
@@ -47,12 +47,22 @@ class WaveInference():
         return self.status, self.data
 
     def lime_explanation(self, x_coord, y_coord):
-        data = get_data(x_coord, y_coord)
-        explainer = LimeTabularExplainer(self.dataset, mode="classification", training_labels = self.labels)
-        #exp = explainer.explain_instance(data, self.model.predict_proba, num_features=10)
-        #explainer = explainer.explain_instance(data, self.model.predict_proba).as_list()
-        explanation = explainer = LimeTabularExplainer(data, mode="classification", training_labels = self.labels).as_list()
+        # shape should be (n_features,)
+        print(self.dataset.shape)
+        print(self.labels)
+        data = get_data(x_coord, y_coord)[0]
+        print(data)
+        print("generating explainer")
+        explainer = LimeTabularExplainer(self.dataset,  training_labels = self.labels, mode="classification")
+        print("explainer generated")
+        print("generating explanation")
+        print(self.model.predict_proba)
+        print("prediction")
+        print(self.model.predict_proba(data.reshape(1, -1)))
+        explanation = explainer.explain_instance(data, self.model.predict_proba).as_list()
+        print("explanation generated")
         feature_importance = [b for a, b in explanation]
+        print(f"feature importance : {feature_importance}")
         return feature_importance
         
 # def inference(model_path, x_coord, y_coord, num_class: int = 2):
