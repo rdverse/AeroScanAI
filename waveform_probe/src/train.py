@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
-class DefectClassify():
+class WaveformProbe():
     
     def __init__(self, model_name: str):
         self.model_name = model_name
@@ -86,7 +86,7 @@ class DefectClassify():
         model_rf = GridSearchCV(RandomForestClassifier(
                 criterion='gini', max_depth=None, n_jobs=ncpu, oob_score=True, random_state=42), param_grid=params, cv=5)
         # fit model
-        model_rf.fit(self.X_train, self.y_train, n_jobs=ncpu)
+        model_rf.fit(self.X_train, self.y_train)
         # save grid search time
         self.bench_dict["grid_search_time"] = time.time()-start_time
         # get best estimator
@@ -139,7 +139,7 @@ class DefectClassify():
         self.bench_dict["Accuracy_test"] = metrics.accuracy_score(self.y_test, y_pred)
         self.bench_dict["F1_test"] = metrics.f1_score(self.y_test, y_pred, average='macro')
         # dont need to return the predictions
-        preds = dict(zip(self.X_test.index, y_pred))
+        preds = dict(zip(np.arange(len(y_pred)), y_pred))
         print(preds)
         return self.bench_dict
     
@@ -155,7 +155,7 @@ class DefectClassify():
         
         logger.info("Saving model")
         with open( self.model_path, "wb") as fh:
-            joblib.dump(self.d4p_model, fh.name)
-
+            joblib.dump(self.model_rf, fh.name)
+        
         return self.model_path
     
