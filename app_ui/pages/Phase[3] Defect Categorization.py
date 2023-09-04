@@ -3,27 +3,29 @@ from PIL import Image
 import requests
 
 # Set the title of the app
-st.title('AIrcrafy defect classification')
+st.title('Defect class identification and categorization')
 
 # Create two tabs: "Application" and "Help"
 app_tab, help_tab = st.tabs(["Application", "Help"])
-
-# "Application" tab
 
 with app_tab:
     # Header image
     col11, col22 = st.columns(2)
     with col11:
-        #image = Image.open('./assets/qaqc.png')
-        #st.image(image)
-        st.markdown("text")
+        image = Image.open('./assets/defect-classification.png')
+        st.image(image)
+        st.markdown("""
+                    ### This module uses XGBoost, daal4py, modin, intel extension for sklearn.
+                    Visit help tab for more information on the features and model.
+                    """)
     with col22:
         st.markdown(
             """
-            ##### Detect defect in fuselages
+            ##### Phase 3: The inspectors can train a model on statistical features generated from ultrasonic waveforms in NDT testing data.
+            ##### The model can then be used to predict the defect class of new ultrasonic waveforms.
+            ##### Furthermore, the inspectors can append new data to the training dataset to interpret model's performance.
             """
         )
-
     # Separator
     st.divider()
 
@@ -35,22 +37,41 @@ with app_tab:
         """
     )
     # Input data
-    data_file = st.text_input('Training Data File Path', key='data', value='./box/datasets/defect_classify/train.csv')
-    window_size = st.number_input('Window', min_value=50, max_value=200, value=125, step=5)
-    lag_size = st.slider('Lagging Window', min_value=5, max_value=50, value=25, step=5)
-    epochs = st.number_input('Epochs', min_value=1, max_value=100, step=1, value=5)
-    batch_size = st.number_input('Batch Size', min_value=100, max_value=1000, step=1, value=512)
-    model_path = st.text_input('Model Save Path', key='model path', value='./box/models/defect_classify/')
-    model_name = st.text_input('Model Name',key='model name', help='The name of the model without extensions', value='model')
-    test_size = st.slider('Percentage of data saved for Testing',min_value=5, max_value=50, value=25, step=5)
-
+    #with st.expander("Input Data"): 
+    cola1, cola2 = st.columns(2)
+    with cola1:
+        test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan"], placeholder="low_defect_scan")
+        train_scan = st.selectbox('Train Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan"], placeholder="high_defect_scan")
+        data_file = st.text_input('Training Data File Path', key='data', value='') 
+        model_path = st.text_input('Model Save Path', key='model path', value='./box/models/defect_classify/')
+        
+        
+    with cola2:    
+        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=512, value=10, step=1)
+        img_dim = st.selectbox('Image Dimension', [8,16,32,64,128,256,512], placeholder="64")
+        model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
+        with st.expander("More info on data"):
+            st.info("""
+                   ###### Recomended : Choose test_scan and train_scan with low, medium and high defect scans - you don't need to choose data file.
+                   ######              These scans are persisted through the three phases, so you can choose the same scans for all phases.
+                   ######             (It is advised to choose high_defect_scan for training and others for testing (due to data imbalance in low/medium defect scans)")
+                   ###### Choose the following data file if you loaded csv prior to running docker ./box/datasets/defect_classify/train.csv
+                    """)
+        
     # Button to train the model
     if st.button('Train Model', key='training'):
         # Build the request
         URL = 'http://defect_classify:5001/train'
     
-        DATA = {'file':data_file, 'model_name':model_name, 'model_path':model_path, 
-                  'test_size': test_size, 'ncpu': 1}
+        DATA = {'file':data_file, 
+                'model_name':model_name, 
+                'model_path':model_path, 
+                'test_scan':test_scan,
+                'train_scan':train_scan,
+                'n_channels':n_channels,
+                'img_dim':img_dim, 
+                'ncpu': 1} # 
+        
         print(DATA)
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
         print(TRAINING_RESPONSE)
@@ -63,7 +84,6 @@ with app_tab:
             st.success('Training was Succesful')
             st.info(TRAINING_RESPONSE.text)
             st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
-            
 
     # Separator
     st.divider()
