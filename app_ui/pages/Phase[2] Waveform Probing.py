@@ -31,6 +31,7 @@ with app_tab:
     )
     # Input data
     data_file = st.text_input('Training Data File Path', key='data', value='./box/datasets/waveform_probe/train.csv')
+    
     model_path = st.text_input('Model Save Path', key='model path', value='./box/models/waveform_probe/')
     model_name = st.text_input('Model Name',key='model name', help='The name of the model without extensions', value='model')
     test_size = st.slider('Percentage of data saved for Testing',min_value=5, max_value=50, value=25, step=5)

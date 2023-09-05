@@ -38,7 +38,7 @@ with app_tab:
     # Button to train the model
     if st.button('Train Model', key='training'):
         # Build the request
-        URL = 'http://scan_anomaly:5002/train'
+        URL = 'http://scan_anomaly:5003/train'
     
         DATA = {'file':data_file, 
                 'model_name':model_name, 
@@ -82,7 +82,7 @@ with app_tab:
     sample = [{'x_coord':x_coord, 'y_coord':y_coord}]
     
     if st.button('Run Maintenance Analysis', key='analysis'):
-        URL = 'http://scan_anomaly:5002/predict'
+        URL = 'http://scan_anomaly:5003/predict'
         DATA = {'model_path':selected_model_path, 'data_path' : selected_data_path, 'x_coord':x_coord , 'y_coord' : y_coord ,'num_class':3}
         INFERENCE_RESPONSE = requests.post(url = URL, json = DATA)
         #print(INFERENCE_RESPONSE.json())

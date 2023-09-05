@@ -1,5 +1,3 @@
-# Copyright (C) 2022 Intel Corporation
-# SPDX-License-Identifier: BSD-3-Clause
 '''
 Module to train and prediction using XGBoost Classifier
 '''
@@ -20,15 +18,16 @@ from sklearn.preprocessing import RobustScaler
 from sklearnex import patch_sklearn
 patch_sklearn()
 
+from data_utils import *
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
 class DefectClassify():
     
-    def __init__(self, model_name: str):
-        self.model_name = model_name
-        self.file = ''
+    def __init__(self):
+        self.append_file = ''
         self.y_train = ''
         self.y_test = ''
         self.X_train_scaled_transformed = ''
@@ -39,7 +38,7 @@ class DefectClassify():
         self.parameters = ''
         self.robust_scaler = ''
         
-    def process_data(self, file: str, test_size: int = .25):
+    def process_data(self, img_dim : int, n_channels : int, train_scan : str, test_scan : str, append_path: str):
         """_summary_
 
         Parameters
@@ -49,20 +48,22 @@ class DefectClassify():
         test_size : int, optional
             _description_, by default .25
         """
-
         # Generating our data
-        logger.info('Reading the dataset from %s...', file)
-        try:
-            data = pd.read_pickle(file)
-        except FileNotFoundError:
-            sys.exit(f'Data loading error, file not found at {file}')
-
-
-        X = data.drop('defect', axis=1)
-        y = data.defect
-
-        X_train, X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
-
+        logger.info('Reading the dataset from %s...', append_path)
+        
+        if append_path != '':
+            print("Append file is specified")
+            try:
+                data = pd.read_pickle(append_path)
+            except FileNotFoundError:
+                print("Append file not found")
+                #sys.exit(f'Data loading error, file not found at {file}')
+       
+        # TRAINING DATA
+        X_train, self.y_train, pixelmap_train, columns = synthetic_defects(img_dim, n_channels, train_scan)
+        X_test, self.y_test, pixelmap_test, columns = synthetic_defects(img_dim, n_channels, test_scan)
+        # synthetic data
+            
         df_num_train = X_train.select_dtypes(['float', 'int', 'int32'])
         df_num_test = X_test.select_dtypes(['float', 'int', 'int32'])
         self.robust_scaler = RobustScaler()
@@ -76,30 +77,7 @@ class DefectClassify():
         self.X_test_scaled_transformed = pd.DataFrame(X_test_scaled,
                                                  index=df_num_test.index,
                                                  columns=df_num_test.columns)
-
         
-        #del X_train_scaled_transformed['Number_Repairs']
-
-        #del X_test_scaled_transformed['Number_Repairs']
-
-        # Dropping the unscaled numerical columns
-        # X_train = X_train.drop(['Age', 'Temperature', 'Last_Maintenance', 'Motor_Current'], axis=1)
-        # X_test = X_test.drop(['Age', 'Temperature', 'Last_Maintenance', 'Motor_Current'], axis=1)
-        
-        # X_train = X_train.astype(int)
-        # X_test = X_test.astype(int)
-
-        # # Creating train and test data with scaled numerical columns
-        # X_train_scaled_transformed = pd.concat([X_train_scaled_transformed, X_train], axis=1)
-        # X_test_scaled_transformed = pd.concat([X_test_scaled_transformed, X_test], axis=1)
-
-        # self.X_train_scaled_transformed = X_train_scaled_transformed.astype(
-        #                                 {'Motor_Current': 'float64'})
-        # self.X_test_scaled_transformed = X_test_scaled_transformed.astype(
-        #                                 {'Motor_Current': 'float64'})
-        
-        
-
     def train(self, ncpu: int = 1):
         """_summary_
 
@@ -108,7 +86,6 @@ class DefectClassify():
         ncpu : int, optional
             _description_, by default 1
         """
-        
         # Set xgboost parameters
         self.parameters = {
         'max_bin': 256,
@@ -125,7 +102,6 @@ class DefectClassify():
         }
         
         xgb_train = xgb.DMatrix(self.X_train_scaled_transformed, label=np.array(self.y_train))
-    
         xgb_model = xgb.train(self.parameters, xgb_train, num_boost_round=20)
         self.d4p_model = d4p.get_gbt_model_from_xgboost(xgb_model)
         print(xgb_model.get_fscore())
@@ -152,10 +128,12 @@ class DefectClassify():
 
         print('=====> XGBoost Daal accuracy score %f', self.d4p_acc)
         print('DONE')
-        print(f"model predictions are {daal_prediction.prediction[:, 0]}")
+        #print(f"model predictions are {daal_prediction.prediction}")
+        print(self.y_test)
+        print(self.y_train)
         return self.d4p_acc
     
-    def save(self, model_path):
+    def save(self, model_path, model_name):
         """_summary_
 
         Parameters
@@ -163,11 +141,11 @@ class DefectClassify():
         model_path : _type_
             _description_
         """
-        self.model_path = model_path +  self.model_name + '.joblib'
-        self.scaler_path = model_path +  self.model_name + '_scaler.joblib'
+        self.append_path = model_path +  model_name + '.joblib'
+        self.scaler_path = model_path +  model_name + '_scaler.joblib'
         
         logger.info("Saving model")
-        with open( self.model_path, "wb") as fh:
+        with open( self.append_path, "wb") as fh:
             joblib.dump(self.d4p_model, fh.name)
         
         logger.info("Saving Scaler")

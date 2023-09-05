@@ -15,7 +15,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 #warnings.filterwarnings("ignore")
 
-
 @app.get("/ping")
 async def ping():
     """Ping server to determine status
@@ -41,13 +40,14 @@ async def train(payload:TrainPayload):
     API response
         Accuracy metrics and other logger feedback on training progress.
     """
-    model = DefectClassify(payload.model_name)
-    model.process_data(payload.file, payload.test_size)
+    model = DefectClassify()
+    model.process_data(payload.img_dim, payload.n_channels, payload.train_scan, payload.test_scan, payload.append_path)
+    print("Data has been successfully processed")
     logger.info("Data has been successfully processed")
     fi = model.train(payload.ncpu)
-    logger.info("Robotic Maintenance Model Successfully Trained")
-    mp, sp = model.save(payload.model_path)
-    logger.info("Saved Robotic Maintenance Model")
+    logger.info("XGBoost Model Successfully Trained")
+    mp, sp = model.save(payload.model_path, payload.model_name)
+    logger.info("Saved XGBoost Model Successfully")
     accuracy_score = model.validate()
     return {"msg" : f"{mp}   {sp} Model trained succesfully model path is {payload.model_path}\n feature importance : {fi}", "validation scores": accuracy_score}
 
