@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 class PredictionPayload(BaseModel):
     data: list
+    model_name: str
     model_path: str
     num_class: int = 3
     scaler: bool = True

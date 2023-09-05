@@ -90,19 +90,24 @@ class DefectClassify():
         self.parameters = {
         'max_bin': 256,
         'scale_pos_weight': 2,
-        'lambda_l2': 1,
-        'alpha': 0.9,
-        'max_depth': 3,
-        'num_leaves': 2**3,
-        'verbosity': 0,
+        # l2 regularization - reduces overfitting
+        'lambda_l2': 100,
+        # alpha is l1 - it will encourage sparsity
+        'alpha': 0.0,
+        'max_depth': 8,
+        'num_leaves': 2**4,
+        'verbosity': 2,
         'objective': 'multi:softmax',
-        'learning_rate': 0.3,
+        'learning_rate': 0.1,
         'num_class': 3,
-        'nthread': ncpu
+        'nthread': 2,
+       # 'feature_importance_type': 'gain',
+        #'feature_fraction': 0.9, 
+        'rate_dropout':0.2
         }
         
         xgb_train = xgb.DMatrix(self.X_train_scaled_transformed, label=np.array(self.y_train))
-        xgb_model = xgb.train(self.parameters, xgb_train, num_boost_round=20)
+        xgb_model = xgb.train(self.parameters, xgb_train, num_boost_round=50)
         self.d4p_model = d4p.get_gbt_model_from_xgboost(xgb_model)
         print(xgb_model.get_fscore())
         return xgb_model.get_fscore()
