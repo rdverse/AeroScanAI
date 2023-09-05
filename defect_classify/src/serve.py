@@ -15,7 +15,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 #warnings.filterwarnings("ignore")
 
-
 @app.get("/ping")
 async def ping():
     """Ping server to determine status
