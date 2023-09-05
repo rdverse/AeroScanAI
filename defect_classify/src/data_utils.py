@@ -31,6 +31,7 @@ def synthetic_defects(array_size, scan_type):
             noise = noise + np.random.randint(0, 3, 10)
         sine_wave += noise
         return sine_wave
+    
     def feature_builder(datapoint):
         min_val = np.min(datapoint, axis=1)
         max_val = np.max(datapoint, axis=1)
