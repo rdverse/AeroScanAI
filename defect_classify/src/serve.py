@@ -55,8 +55,9 @@ async def train(payload:TrainPayload):
 async def predict(payload:PredictionPayload):
     print("entered predict")
     sample = pd.json_normalize(payload.data)
-    results = inference(data = sample, model_path = payload.model_path, num_class = payload.num_class)
-    return {"msg": "Completed Analysis", "Maintenance Recommendation": results}
+    print(sample)
+    results = inference(model_name = payload.model_name, model_path = payload.model_path, data=sample, num_class = payload.num_class)
+    return {"msg": "Completed Analysis", "Defect Result": results}
 
 @app.post("/append_data")
 async def new_data_append(payload:AppendDataPayload):

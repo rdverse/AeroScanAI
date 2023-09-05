@@ -96,6 +96,9 @@ with app_tab:
     col21, col22, col23 = st.columns(3)
     
     with col21:
+        st.info("Select from scan?")
+        
+        st.info("X and Y Coordinates from the original scan")
         x_coord = st.slider('X Coordinate', min_value=0, max_value=512, step=1, value=5)
         y_coord = st.slider('Y Coordinate', min_value=0, max_value=512, step=1, value=5)
         with st.expander("More info on quality checks"):

@@ -5,23 +5,22 @@ import os
 import numpy as np
 import pandas as pd
 
-def inference(model_path, data, num_class: int = 3, scaler: bool = True):
+def inference(model_name, model_path, data, num_class: int = 3, scaler: bool = True):
     # Use .joblib extension to save file
     scaler_path = ""
     if "model" in model_path:
         scaler_path = scaler_path.replace("model", "")
-        
     if ".pb" in model_path:
-        scaler_path = "".join(model_path.split(".pb")) + "model_scaler.joblib"
+        scaler_path = "".join(model_path.split(".pb")) + model_name + "_scaler.joblib"
     elif ".joblib" in model_path:    
-        scaler_path = "".join(model_path.split(".joblib")) + "model_scaler.joblib"
+        scaler_path = "".join(model_path.split(".joblib")) + model_name + "_scaler.joblib"
     elif ".pkl" in model_path:
-        scaler_path = "".join(model_path.split(".pkl")) + "model_scaler.joblib"
+        scaler_path = "".join(model_path.split(".pkl")) + model_name + "_scaler.joblib"
     else:
-        scaler_path = os.path.join(model_path,"model_scaler.joblib")
+        scaler_path = os.path.join(model_path,f"{model_name}_scaler.joblib")
     #scaler_path = "./box/models/defect_classify/model_scaler.joblib"
     
-    if "model.joblib" not in model_path:
+    if f"{model_name}.joblib" not in model_path:
         model_path = os.path.join(model_path,"model.joblib")
         
     # load robust scaler
@@ -33,9 +32,7 @@ def inference(model_path, data, num_class: int = 3, scaler: bool = True):
         daal_model = joblib.load(fh.name)
     categorical_columns = []
     
-    print(data)
     data = pd.DataFrame(data, index=[0])
-    print(data)
     scaled_samples_transformed = robust_scaler.transform(data)
 
     if len(categorical_columns)>0:
@@ -52,13 +49,13 @@ def inference(model_path, data, num_class: int = 3, scaler: bool = True):
     status = 'unknown defect'
     for prediction in daal_prediction.prediction[:, 0]:
         if prediction == 0:
-            status = 'Equipment Does Not Require Scheduled Maintenance'
+            status = 'No Defect'
             return status
         elif prediction == 1:
-            status = 'Equipment Requires Scheduled Maintenance - Plan Accordingly'
+            status = 'Type-1 Defect'
             return status
         elif prediction == 2:
-            status = 'Equipment Requires Immediate Maintenance - Schedule Immediately'
+            status = 'Type-2 Defect'
     return status
 
 
