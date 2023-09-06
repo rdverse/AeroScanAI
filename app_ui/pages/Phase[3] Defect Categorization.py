@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from PIL import Image
 import requests
@@ -9,6 +10,8 @@ st.title('Defect class identification and categorization')
 app_tab, help_tab = st.tabs(["Application", "Help"])
 
 with app_tab:
+    ####################PART-1 MODEL TRAINING #################################
+    "st.session_state object:" , st.session_state
     # Header image
     col11, col22 = st.columns(2)
     with col11:
@@ -28,7 +31,6 @@ with app_tab:
         )
     # Separator
     st.divider()
-    # Patient readmission prediction model training
     st.markdown(
         """
         #### Model training for defect classification.
@@ -83,24 +85,49 @@ with app_tab:
             st.info(TRAINING_RESPONSE.text)
             st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
 
+    ####################PART-2 : Partial dependence visualization##############################
     # Separator
     st.divider()
+    def update_slider():
+        st.session_state.slider = st.session_state.numeric
+    def update_numin():
+        st.session_state.numeric = st.session_state.slider            
+
+    val = st.number_input('Input', value = 0, key = 'numeric', on_change = update_slider)
+
+
+    slider_value = st.slider('slider', min_value = 0, 
+                            value = val, 
+                            max_value = 5,
+                            step = 1,
+                            key = 'slider' )
 
     st.markdown(
         """
         #### Partial dependence analysis of a feature on outcome.
         """
     )
-
     selected_model_path = st.text_input('Selected Model Path',key='model path selection', value='./box/models/defect_classify/model.joblib')
     col21, col22, col23 = st.columns(3)
     
+    def update_data():
+        return None    
+        #st.session_state.data = st.session_state.data
+    
     with col21:
         st.info("Select from scan?")
-        
         st.info("X and Y Coordinates from the original scan")
         x_coord = st.slider('X Coordinate', min_value=0, max_value=512, step=1, value=5)
         y_coord = st.slider('Y Coordinate', min_value=0, max_value=512, step=1, value=5)
+        
+        if st.button('Fetch data', key='fetch_data', on_click=update_data):
+            URL = 'http://defect_classify:5001/fetch_coordinates_data'
+            DATA = {'x_coord':x_coord, 'y_coord':y_coord}
+            DATA_RESPONSE = requests.post(url = URL, json = DATA)
+            st.info(DATA_RESPONSE)
+            # Now call the update function from here to update sample data    
+            #st.info("")
+        
         with st.expander("More info on quality checks"):
             st.info("""
                    ###### Quality checks are binary features indicating no issue or indcating presence of an issue.
@@ -113,7 +140,6 @@ with app_tab:
         qc3 = st.selectbox('Quality Check-3', [0,1])
         qc4 = st.selectbox('Quality Check-4', [0,1])
 
-# ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "backwall", "frontwall", "ramp",  "geometry", "defect"]
     with col23:
         st.info("waveform characteristics")
         min = st.slider('Minimum Value', min_value=0.00, max_value=10.00, step=.05, value=5.00)
@@ -159,7 +185,8 @@ with app_tab:
         else:
             st.success(str(DATAAPPEND_RESPONSE.json()))#.get('Maintenance Recommendation')))
 # Help tab frontend below
-    
+############################### HELP TAB#################################
+
 with help_tab:
     st.markdown("#### Input Descriptions for Ultrasonic NDT Testing:")
     st.markdown("### Quality Checks: 1 and 2")
