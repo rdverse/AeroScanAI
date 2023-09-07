@@ -109,8 +109,12 @@ with app_tab:
     )
     selected_model_path = st.text_input('Selected Model Path',key='model path selection', value='./box/models/defect_classify/model.joblib')
     col21, col22, col23 = st.columns(3)
-    
+   
+   
+    fetched_data = None 
     def update_data():
+        print("entered update data")
+        print(fetched_data)
         return None    
         #st.session_state.data = st.session_state.data
     
@@ -122,11 +126,12 @@ with app_tab:
         
         if st.button('Fetch data', key='fetch_data', on_click=update_data):
             URL = 'http://defect_classify:5001/fetch_coordinates_data'
-            DATA = {'x_coord':x_coord, 'y_coord':y_coord}
+            DATA = {'img_dim': img_dim, 'n_channels': n_channels, 'test_scan': test_scan, 'x_coord':x_coord, 'y_coord':y_coord}
             DATA_RESPONSE = requests.post(url = URL, json = DATA)
-            st.info(DATA_RESPONSE)
+            st.info(DATA_RESPONSE.text)
+            #update_data(DATA_RESPONSE.text)
             # Now call the update function from here to update sample data    
-            #st.info("")
+            #st.info()
         
         with st.expander("More info on quality checks"):
             st.info("""
@@ -149,7 +154,6 @@ with app_tab:
         std = st.slider('Standard Deviation', min_value=0.00, max_value=10.00, step=.05, value=5.00)
         num_peaks = st.slider('Number of Peaks', min_value=0, max_value=100, step=1, value=5)
     
-    #sample = [{'backwall':1, 'frontwall':1, 'ramp':1, 'geometry':1, 'no_peaks':1, 'noise':1, 'max':1, 'min':1, 'signal_noise_ratio':1}]
     sample = [{'qc1':qc1, 'qc2':qc2, 'qc3':qc3, 'qc4':qc4, 'min':min, 'max':max, 'mean':mean, 'std':snr, 'snr': std,'num_peaks':num_peaks}]
 
     if st.button('Defect Categorization', key='analysis'):
@@ -186,7 +190,6 @@ with app_tab:
             st.success(str(DATAAPPEND_RESPONSE.json()))#.get('Maintenance Recommendation')))
 # Help tab frontend below
 ############################### HELP TAB#################################
-
 with help_tab:
     st.markdown("#### Input Descriptions for Ultrasonic NDT Testing:")
     st.markdown("### Quality Checks: 1 and 2")

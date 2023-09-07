@@ -20,3 +20,10 @@ class TrainPayload(BaseModel):
 class AppendDataPayload(BaseModel): 
     data_path: str
     data: list
+    
+class FetchCoordinatesPayload(BaseModel):
+    img_dim : int
+    n_channels : int
+    test_scan : str
+    x_coord : int
+    y_coord : int
