@@ -1,3 +1,4 @@
+import os
 import math
 import random
 import numpy as np
@@ -139,3 +140,61 @@ def synthetic_defects(img_dim, n_channels, scan_type):
     columns = ["qc1", "qc2", "qc3", "qc4", "min", "max", "mean", "std", "snr", "num_peaks",  "defect"]
     df = df[columns]
     return df.drop(columns = ["defect"]), df["defect"], pixelmap, columns
+
+
+
+def append_data(data_path, data):
+    """
+    Append new data to an existing or new pickle file.
+
+    Parameters
+    ----------
+    data_path : str
+        The file path to the pickle file where data will be stored or appended.
+    data : pd.DataFrame
+        The DataFrame containing the new data to be appended.
+
+    Returns
+    -------
+    int
+        The total number of records in the combined DataFrame after appending.
+
+    Notes
+    -----
+    If the specified `data_path` does not exist, a new pickle file will be created.
+    If the file already exists, the new data will be appended to the existing data.
+    """
+    combined_data = pd.DataFrame()
+    previousdatalen = 0
+    # Check if the data file already exists
+    if os.path.exists(data_path):
+        # Read the existing pickle file into a DataFrame
+        existing_data = pd.read_pickle(data_path)
+        previousdatalen = len(existing_data)
+    else:
+        existing_data = None
+
+    if existing_data is not None:
+        # Append the new data to the existing data
+        combined_data = pd.concat([existing_data, data], ignore_index=True)
+        # Save the combined data back to the pickle file
+        combined_data.to_pickle(data_path)
+        print("Data appended to existing pickle file.")
+    else:
+        # If no existing data found, create a new pickle file
+        data.to_pickle(data_path)
+        print("New data file created.")
+
+    print("Data saved to pickle file.")
+    return {"msg": f"Data points before appending : {previousdatalen}, and data points after appending: {len(combined_data)}"}
+
+def fetch_coordinates_data(img_dim, n_channels, test_scan, x_coord, y_coord):
+    features, labels, pixelmap, columns = synthetic_defects(img_dim=img_dim, n_channels=n_channels, scan_type=test_scan)
+    print(pixelmap)
+    indices = np.where(np.all(pixelmap==[x_coord, y_coord], axis=1))
+    print(indices)
+    assert len(indices[0]) == 1, "more than one index found"
+    
+    selected_data  = features.iloc[indices[0]]
+    print(selected_data)
+    return selected_data.to_dict()
