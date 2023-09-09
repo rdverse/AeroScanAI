@@ -15,7 +15,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 #warnings.filterwarnings("ignore")
 
-
 @app.get("/ping")
 async def ping():
     """Ping server to determine status
@@ -43,7 +42,7 @@ async def train(payload:TrainPayload):
     """
     model = WaveformProbe(payload.model_name)
     # loads data
-    model.process_data(payload.file, payload.test_size)
+    model.process_data(payload.img_dim, payload.n_channels, payload.train_scan, payload.test_scan, payload.append_path)
     logger.info("Data has been successfully processed")
     fi = model.train(payload.ncpu)
     logger.info("Robotic Maintenance Model Successfully Trained")
