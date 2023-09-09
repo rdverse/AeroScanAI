@@ -87,13 +87,13 @@ shutdown-scan_anomaly:
 ############ DEFECT CLASSIFY AND WAVEFORM PROBE #################
 
 launch-defect_classify_and_waveform_probe: setup-box-defect_classify setup-box-waveform_probe create-synthethic-data-dc create-synthethic-data-wp
-	docker-compose -f docker-compose-dc-wp.yaml -p dc up -d
+	docker-compose -f docker-compose-dc-wp.yaml -p dc-wp up -d
 
 launch-defect_classify_and_waveform_probe_no_data: 
-	docker-compose -f docker-compose-dc-wp.yaml -p dc up -d
+	docker-compose -f docker-compose-dc-wp.yaml -p dc-wp up -d
 
 shutdown-defect_classify_and_waveform_probe:
-	docker-compose -f docker-compose-dc-wp.yaml -p dc down
+	docker-compose -f docker-compose-dc-wp.yaml -p dc-wp down
 
 
 ############ DEFECT CLASSIFY AND WAVEFORM PROBE AND SCAN ANOMALY#################
