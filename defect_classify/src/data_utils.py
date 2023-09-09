@@ -14,7 +14,7 @@ SCAN_DICT = {"low_defect_scan": {"defect_coverage": 0.15, "random_seed": 9},
              "high_defect_scan": {"defect_coverage": 0.8, "random_seed": 9},
              "random": {"defect_coverage": np.random.randn(), "random_seed": int(np.random.uniform(10,1000))}}
 # go to CHECKPOINT-1 to change level of noise
-def synthetic_defects(img_dim, n_channels, scan_type):
+def synthetic_defects(img_dim, n_channels, scan_type, stat_features=True):
     defect_coverage = SCAN_DICT[scan_type]["defect_coverage"]
     random_seed = SCAN_DICT[scan_type]["random_seed"]
     np.random.seed(random_seed)
@@ -56,7 +56,6 @@ def synthetic_defects(img_dim, n_channels, scan_type):
         # Stack the calculated features horizontally to get a (6000, 6) array
         features = np.column_stack((min_val, max_val, mean_val, std_val, snr_val, num_peaks))
         return features
-    
     # Calculate the total area of the array
     data = np.zeros((img_dim, img_dim, n_channels))
     mask = np.zeros((img_dim, img_dim))
@@ -100,16 +99,17 @@ def synthetic_defects(img_dim, n_channels, scan_type):
     #print(np.min(data), np.max(data))
     scale = MinMaxScaler()
     data = np.round(scale.fit_transform(data.reshape(-1, n_channels)))#.reshape(64, 64, n_channels), 3)
-    data = feature_builder(data)
+    if stat_features:
+        data = feature_builder(data)
+     # last column is defect
+     #columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "backwall", "frontwall", "ramp",  "geometry", "defect"]
+     # add zeros where the new artificial features will be
+    columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "qc1", "qc2", "qc3", "qc4", "defect"]
     mask = mask.reshape(-1,).reshape(-1,1)
     pixelmap = pixelmap.reshape(img_dim, img_dim, 2).reshape(-1, 2)
     #data = data.astype(np.float16) - 4 times lighter than float64 but going with float32 for now
     print(np.min(data), np.max(data), np.median(data))
 
-    # last column is defect
-    #columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "backwall", "frontwall", "ramp",  "geometry", "defect"]
-    # add zeros where the new artificial features will be
-    columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "qc1", "qc2", "qc3", "qc4", "defect"]
     data = np.column_stack((data, np.zeros((data.shape[0], 4))))
     data = np.column_stack((data, mask))
     df = pd.DataFrame(data, columns=columns)
@@ -118,30 +118,28 @@ def synthetic_defects(img_dim, n_channels, scan_type):
     logger.info("mask sum is %s", np.sum(mask))
     print(len(mask))
     # distribute defect classes
-    
-    df.loc[df['defect'] == 1, "defect"] = np.random.choice([1, 2], size=(df['defect'] == 1).sum(), p=[0.5, 0.5])
-    #print(df.shape)
-    #print(df[df['defect'] == 0].shape)
-    #print(df[df['defect'] == 1].shape)
-    #print(df[df['defect'] == 2].shape)
-    #print(np.random.choice([1, 2], size=(df['defect'] == 1).sum(), p=[0.5, 0.5]))
-    # backwall
-    df.loc[df['defect'] == 1, 'backwall'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.2, 0.8])
-    df.loc[df['defect'] == 2, 'backwall'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.7, 0.3])
-    # frontwall
-    df.loc[df['defect'] == 1, 'frontwall'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.3, 0.7])
-    df.loc[df['defect'] == 2, 'frontwall'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.8, 0.2])
-    # ramp
-    df.loc[df['defect'] == 1, 'ramp'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.7, 0.3])
-    df.loc[df['defect'] == 2, 'ramp'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.2, 0.8])
-    # geometry
-    df.loc[df['defect'] == 1, 'geometry'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.8, 0.2])
-    df.loc[df['defect'] == 2, 'geometry'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.3, 0.7])
-    columns = ["qc1", "qc2", "qc3", "qc4", "min", "max", "mean", "std", "snr", "num_peaks",  "defect"]
-    df = df[columns]
+    if stat_features:
+        df.loc[df['defect'] == 1, "defect"] = np.random.choice([1, 2], size=(df['defect'] == 1).sum(), p=[0.5, 0.5])
+        #print(df.shape)
+        #print(df[df['defect'] == 0].shape)
+        #print(df[df['defect'] == 1].shape)
+        #print(df[df['defect'] == 2].shape)
+        #print(np.random.choice([1, 2], size=(df['defect'] == 1).sum(), p=[0.5, 0.5]))
+        # backwall
+        df.loc[df['defect'] == 1, 'backwall'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.2, 0.8])
+        df.loc[df['defect'] == 2, 'backwall'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.7, 0.3])
+        # frontwall
+        df.loc[df['defect'] == 1, 'frontwall'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.3, 0.7])
+        df.loc[df['defect'] == 2, 'frontwall'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.8, 0.2])
+        # ramp
+        df.loc[df['defect'] == 1, 'ramp'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.7, 0.3])
+        df.loc[df['defect'] == 2, 'ramp'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.2, 0.8])
+        # geometry
+        df.loc[df['defect'] == 1, 'geometry'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.8, 0.2])
+        df.loc[df['defect'] == 2, 'geometry'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.3, 0.7])
+        columns = ["qc1", "qc2", "qc3", "qc4", "min", "max", "mean", "std", "snr", "num_peaks",  "defect"]
+        df = df[columns]
     return df.drop(columns = ["defect"]), df["defect"], pixelmap, columns
-
-
 
 def append_data(data_path, data):
     """
@@ -190,11 +188,13 @@ def append_data(data_path, data):
 
 def fetch_coordinates_data(img_dim, n_channels, test_scan, x_coord, y_coord):
     features, labels, pixelmap, columns = synthetic_defects(img_dim=img_dim, n_channels=n_channels, scan_type=test_scan)
-    print(pixelmap)
+    #print(pixelmap)
     indices = np.where(np.all(pixelmap==[x_coord, y_coord], axis=1))
-    print(indices)
-    assert len(indices[0]) == 1, "more than one index found"
-    
-    selected_data  = features.iloc[indices[0]]
-    print(selected_data)
-    return selected_data.to_dict()
+    #print(indices)
+    if len(indices[0]) == 0:
+        return None
+    else:
+        assert len(indices[0]) == 1, "more than one index found"
+        selected_data  = features.iloc[indices[0]]
+        #print(selected_data)
+        return selected_data.to_dict(orient="records")
