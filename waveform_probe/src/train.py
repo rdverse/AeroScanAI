@@ -20,7 +20,9 @@ from sklearn.ensemble import RandomForestClassifier  # pylint: disable=C0415
 from sklearn import metrics  # pylint: disable=C0415
 from sklearnex import patch_sklearn
 patch_sklearn()
+from data_utils import synthetic_defects
 
+ 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
@@ -38,9 +40,9 @@ class WaveformProbe():
         self.model_path = ''
         self.hypparameters = ''
         
-    def process_data(self, file: str, test_size: int = .25):
+   # def process_data(self, file: str, test_size: int = .25):    
+    def process_data(self, img_dim : int, n_channels : int, train_scan : str, test_scan : str, append_path: str): 
         """_summary_
-
         Parameters
         ----------
         file : str
@@ -48,23 +50,26 @@ class WaveformProbe():
         test_size : int, optional
             _description_, by default .25
         """
-
         # Generating our data
-        logger.info('Reading the dataset from %s...', file)
+        logger.info('Reading the dataset from %s...', append_path)
         # try:
         #     data = pd.read_pickle(file)
         # except FileNotFoundError:
         #     # pass
         #     sys.exit(f'Data loading error, file not found at {file}')
 
-        data = np.random.randint(low=0, high=20, size=(1000, 10))
-        X = data
-        y = np.random.randint(low=0, high=2, size=(1000, 1))
+        #data = np.random.randint(low=0, high=20, size=(1000, 10))
+        #X = data
+        #y = np.random.randint(low=0, high=2, size=(1000, 1))
+        
         #X = data.drop('defect', axis=1)
         #y = data.defect
 
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
+#        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
         
+        self.X_train, self.y_train, pixelmap_train, columns = synthetic_defects(img_dim, n_channels, train_scan)
+        self.X_test, self.y_test, pixelmap_test, columns = synthetic_defects(img_dim, n_channels, test_scan)
+                
     def grid_search(self, ncpu: int = 1):
         """_summary_
 
