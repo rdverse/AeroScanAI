@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import requests
+import ast
 import pandas as pd
 import numpy as np
 # Set the title of the app
@@ -25,43 +26,28 @@ with app_tab:
             This gives an overview of the data and the areas that might potentially have a defect.   
             """)
         
-    cola1, cola2, cola3 = st.columns(3)
+    cola1, cola2 = st.columns(2)
+    
     with cola1:
-        test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
-        n_samples = st.slider('Number of samples',min_value=100, max_value=10000, value=100, step=100)
-        append_path = st.text_input('Training Append Data File Path (If you appended new data below)', key='data', value='') 
-        model_path = st.text_input('Model Save Path', key='model path', value='./box/models/scan_anomaly/')
+        st.info("Model Parameters")
         
-    with cola2:    
-        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=512, value=10, step=1)
-        n_classes = st.selectbox('Number of classes', [1], placeholder="1")
-        img_dim = st.selectbox('Image Dimension', [8,16,32,"64",128,256,512], placeholder="64")
         model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
-        with st.expander("More info on data"):
-            st.info("""
-                   ###### Recomended : Choose test_scan and train_scan with low, medium and high defect scans.
-                   ######              These scans are persisted through the three phases, so you can choose the same scans for all phases.
-                   ######             (It is advised to choose high_defect_scan for training and others for testing (due to data imbalance in low/medium defect scans)")
-                   ###### Choose the following data file if you loaded csv prior to running docker ./box/datasets/defect_classify/train.csv
-                    """)
-            
-    with cola3:
+        model_path = st.text_input('Model Save Path', key='model path', value='./box/models/scan_anomaly/')
+        #test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
+        st.info("Training Parameters")
         n_cpus = st.slider('Number of CPUs',min_value=1, max_value=128, value=1, step=1)
         n_epochs = st.slider('Number of Epochs',min_value=1, max_value=100, value=3, step=1)
         batch_size = st.slider('Batch Size',min_value=1, max_value=128, value=32, step=1)
-        percent_test = st.slider('Percentage of data saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
-    # Separator
-    st.divider()
-    st.markdown(
-        """
-        #### Model Training results
-        """    )
-    # Input data
-    # data_file = st.text_input('Training Data File Path', key='data', value='./box/datasets/scan_anomaly/train.csv')
-    # model_path = st.text_input('Model Save Path', key='model path', value='./box/models/scan_anomaly/')
-    # model_name = st.text_input('Model Name',key='model name', help='The name of the model without extensions', value='model')
-    # test_size = st.slider('Percentage of data saved for Testing',min_value=5, max_value=50, value=25, step=5)
 
+    with cola2:    
+        st.info("Data Parameters")
+        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=512, value=10, step=1)
+        n_classes = st.selectbox('Number of classes', [1], placeholder="1")
+        n_samples = st.slider('Number of samples',min_value=100, max_value=10000, value=100, step=100)
+        img_dim = st.selectbox('Image Dimension', [16,32,64,128,256,512], placeholder="64")
+        percent_test = st.slider('Percentage of data saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
+        #with st.expander("More info on data"):
+            
     # Button to train the model
     if st.button('Train Model', key='training'):
         # Build the request
@@ -70,11 +56,9 @@ with app_tab:
         DATA = { 'img_dim':img_dim, 
                 'n_channels':n_channels,
                 'n_classes':n_classes,
-                'test_scan':test_scan,
                 'n_samples':n_samples,
                 'model_name':model_name, # 'model
                 'model_path':model_path, 
-                'append_path' : append_path,
                 'n_cpus': n_cpus,
                 'n_epochs': n_epochs,
                 'batch_size': batch_size,
@@ -83,6 +67,12 @@ with app_tab:
 
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
         
+        st.divider()
+        st.markdown(
+            """
+            #### Model Training results
+            """    )
+    
         if len(TRAINING_RESPONSE.text) < 40:       
             st.error("Model Training Failed")
             st.info(TRAINING_RESPONSE.text)
@@ -90,15 +80,39 @@ with app_tab:
             st.info(TRAINING_RESPONSE.json().get('msg'))
             st.table(pd.DataFrame.from_dict(TRAINING_RESPONSE.json().get('results')))
         
+    st.divider()
+    st.markdown(
+        """
+        #### Visualize the defects on a test scan
+        """    )     
         
-        # Check the response status code
-        # if len(TRAINING_RESPONSE.text) < 40:       
-        #     st.error("Model Training Failed")
-        #     st.info(TRAINING_RESPONSE.text)
-        # else:
-        #     st.success('Training was Succesful')
-        #     st.info(TRAINING_RESPONSE.text)
-        #     st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
+    test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
+    if st.button('Visualize', key='predict_visualize'):
+        URL = 'http://scan_anomaly:5003/predict'
+        DATA = {'model_name': model_name, 
+                'model_path':model_path,
+                'n_channels': n_channels, 
+                'img_dim': img_dim, 
+                'test_scan' : test_scan
+                }
+        INFERENCE_RESPONSE = requests.post(url = URL, json = DATA)
+        #print(INFERENCE_RESPONSE.json())
+        #st.info(INFERENCE_RESPONSE.text)
+        ####################uncomment
+        #Check the response status code
+        if len(INFERENCE_RESPONSE.text) < 40:       
+            st.error("Model Inference Failed")
+            st.info(INFERENCE_RESPONSE.text)
+        else:
+            st.success('Inference was Succesful')
+            #st.info(INFERENCE_RESPONSE.text)
+            preds = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('preds')))
+            labels = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('labels')))
+            inputs = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('inputs')))
+            st.image(preds)
+            #st.image(labels)
+            #st.image(inputs)
+            #st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
             
 #     # Separator
 #     st.divider()
