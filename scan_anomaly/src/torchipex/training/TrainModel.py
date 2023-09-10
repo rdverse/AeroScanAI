@@ -21,6 +21,7 @@ from torchipex.unet.unet_model import UNet
 # return none
 # def simulatedDataset():
 #     return None 
+import os
 import pandas as pd
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
 
@@ -37,6 +38,12 @@ class TrainModel():
         self.model = UNet(n_channels=n_channels, 
                           n_classes=n_classes, 
                           img_dim = img_dim)
+    def save_model(self, model_name, model_path):
+        torch.save(self.model, os.path.join(model_path,model_name + '.pt'))
+        
+    def load_model_from_file(self, model_name, model_path):
+        self.model = torch.load(os.path.join(model_path,model_name + '.pt'))
+        #self.model.eval()
         
     def load_data(self, n_channels, 
                   n_samples, 
@@ -89,7 +96,6 @@ class TrainModel():
             Test size : {self.n_test},
         ''')
 
-
     def train(self, n_epochs=5, target_accuracy=None, learning_rate= 0.0001, data_aug=False):
         threshold = 0.5        
         #criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
@@ -101,7 +107,6 @@ class TrainModel():
         #     print("IPEX error : Ignoring IPEX optimization")
         #     model = self.model
         #     optimizer = optimizer
-            
         self.model.train()
         for epoch in range(1, n_epochs + 1):
             print(f"Epoch {epoch}/{n_epochs}:", end=" ")
@@ -131,7 +136,7 @@ class TrainModel():
                 loss = criterion(masks, labels)
                 loss.backward()
                 optimizer.step()
-                print(masks)
+                #print(masks)
                 print("predictions sum is : ", torch.sum(masks))
                 print("predictions std is : ", torch.std(masks))
                 print("predictions mean is : ", torch.mean(masks))
@@ -161,8 +166,8 @@ class TrainModel():
         train_preds, train_labels = self.predict(self.train_loader)
         train_preds = train_preds.reshape(-1)
         train_labels = train_labels.reshape(-1)
-        print("train_preds shape is : ", train_preds.shape)
-        print("train_labels shape is : ", train_labels.shape)
+        #print("train_preds shape is : ", train_preds.shape)
+        #print("train_labels shape is : ", train_labels.shape)
         #print(train_preds)
         #print(train_labels)
         metrics_train["Precision"] = precision_score(train_preds, train_labels)
@@ -212,9 +217,9 @@ class TrainModel():
                 predictions.extend(masks.cpu().numpy())
                 labels.extend(batch['mask'].cpu().numpy())
         return (np.array(predictions) > 0.5).astype(int), np.array(labels)  # Apply threshold for binary prediction
-
         
-   
+        
+        
     # # PRACTICALLY DONT NEED THIS FUNCTION IN ACTIVE INFERENCE 
     # def evaluate(self):
     #     """
@@ -302,6 +307,6 @@ class TrainModel():
     #                 plt.show()
     #                 return
     
-    # ADD ADDITIONAL LAYERS HERE IF USING BOTH ACTIVE AND SUPERVISED LEARNING
-    def save_model(self, model_path):
-        torch.save(self.model, model_path)
+    # # ADD ADDITIONAL LAYERS HERE IF USING BOTH ACTIVE AND SUPERVISED LEARNING
+    # def save_model(self, model_path):
+    #     torch.save(self.model, model_path)
