@@ -4,7 +4,7 @@ import random
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 # IMPORTANT : IF YOU NEED TO MODIFY THE DEFECT GO TO CHECKPOINT101 ( in comments )
-
+import math
 
 class SimulatedDataset(Dataset):
     def __init__(self, img_dim, 
@@ -28,8 +28,9 @@ class SimulatedDataset(Dataset):
     
     def __getitem__(self, idx):
         data, mask, pixelmap = self.synthetic_defects(self.random_seeds[idx])
-        data = np.round(self.scale.fit_transform(data.reshape(-1, 10)).reshape(self.img_dim, self.img_dim, self.n_channels), 3)
-        
+        data = self.scale.fit_transform(data.reshape(-1, self.n_channels)).reshape(self.img_dim, self.img_dim, self.n_channels)
+        # rounding does not reduce memory usage!
+         
         sample = {
             'data': torch.tensor(data, dtype=torch.float32),
             'mask': torch.tensor(mask, dtype=torch.float32)
@@ -42,7 +43,6 @@ class SimulatedDataset(Dataset):
             # Generate a random amplitude
             amplitude = random.uniform(0.1, 1.0)
             # Generate a random frequency
-            frequency = random.uniform(1, 20)
             frequency = np.pi * 0.5
             # Generate a random phase
             phase = random.uniform(0, np.pi * 0.1)
@@ -50,15 +50,23 @@ class SimulatedDataset(Dataset):
             sine_wave = 1 * np.sin(2 * np.pi * frequency * np.arange(length) + phase) +1
             # Add noise
             noise_level = 1
-            noise = np.random.random_sample(noise_level)
+            noise =  np.random.uniform(0, noise_level, self.n_channels)
             
             # CHECKPOINT101 : DEFECTS ARE ADDED ADDITIONAL NOISE. YOU CAN CHOOSE TO REMOVE
             if defect:
-                noise = noise + np.random.randint(0, 3, 10)
+                noise = noise + np.random.uniform(0, 1, self.n_channels)
+                dampen_width = math.ceil(self.n_channels//10)
+                n_dampen_points = np.random.choice([1,2,3])
+                if dampen_width>0:
+                    for i in range(n_dampen_points):
+                        dampen_start = np.random.randint(0, self.n_channels - dampen_width - 1)
+                        dampen_end = dampen_start + dampen_width
+                        sine_wave[dampen_start:dampen_end] = 0
+                    
             sine_wave += noise
             return sine_wave
 
-        data = np.zeros((self.img_dim, self.img_dim, 10))
+        data = np.zeros((self.img_dim, self.img_dim, self.n_channels))
         mask = np.zeros((self.img_dim, self.img_dim))
         pixelmap = np.zeros((self.img_dim, self.img_dim, 2)) # 2 for x and y
         defect_area = int(self.img_dim * self.defect_coverage)
@@ -87,8 +95,8 @@ class SimulatedDataset(Dataset):
                     continue
                 else:
                     if mask[i][j] == 1:
-                        data[i][j] = random_sine_wave(10, defect=True)
+                        data[i][j] = random_sine_wave(self.n_channels, defect=True)
                     else:
-                        data[i][j] = random_sine_wave(10, defect=False)
+                        data[i][j] = random_sine_wave(self.n_channels, defect=False)
 
         return data, mask, pixelmap

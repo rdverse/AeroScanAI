@@ -21,6 +21,8 @@ from torchipex.unet.unet_model import UNet
 # return none
 # def simulatedDataset():
 #     return None 
+import pandas as pd
+from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
 
 class TrainModel(): 
     # add an argument called mode 
@@ -36,11 +38,13 @@ class TrainModel():
                           n_classes=n_classes, 
                           img_dim = img_dim)
         
-    def load_data(self, n_samples, 
+    def load_data(self, n_channels, 
+                  n_samples, 
                   img_dim, 
                   percent_test,
                   batch_size,
                   num_workers):
+        self.n_channels = n_channels
         self.n_samples = n_samples
         self.percent_test = percent_test  
         self.batch_size = batch_size    
@@ -52,23 +56,23 @@ class TrainModel():
         n_test_samples = n_val_samples
         
         train_dataset = SimulatedDataset(img_dim = self.img_dim,
-                                         n_channels = 10,
+                                         n_channels = n_channels,
                                          n_samples = n_train_samples,
                                          defect_coverage=0.75,
                                          random_seed=0)
         val_dataset = SimulatedDataset(img_dim = self.img_dim,
-                                         n_channels = 10,
+                                         n_channels = n_channels,
                                          n_samples = n_val_samples,
                                          defect_coverage=0.75,
                                          random_seed=2)
         test_dataset = SimulatedDataset(img_dim = self.img_dim,
-                                         n_channels = 10,
+                                         n_channels = n_channels,
                                          n_samples = n_test_samples,
                                          defect_coverage=0.75,
                                          random_seed=4)
         loader_args = dict(batch_size=self.batch_size, num_workers=self.num_workers)
         print(loader_args)  
-        print(train_dataset)
+        #print(train_dataset)
         
         train_loader = DataLoader(train_dataset,  drop_last=True, **loader_args)
         val_loader = DataLoader(val_dataset,  drop_last=True, **loader_args) 
@@ -87,7 +91,7 @@ class TrainModel():
 
 
     def train(self, n_epochs=5, target_accuracy=None, learning_rate= 0.0001, data_aug=False):
-        
+        threshold = 0.5        
         #criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
         criterion = torch.nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
@@ -99,13 +103,11 @@ class TrainModel():
         #     optimizer = optimizer
             
         self.model.train()
-
         for epoch in range(1, n_epochs + 1):
             print(f"Epoch {epoch}/{n_epochs}:", end=" ")
             running_loss = 0
             running_corrects = 0
             n_samples = 0
-
             # for inputs1, labels1 in self.train_loader:
             #     inputs, labels = inputs1, labels1
             #     if data_aug:
@@ -121,18 +123,23 @@ class TrainModel():
                 # change input shape to (batch_size, n_channels, img_dim, img_dim)
                 inputs = torch.swapaxes(inputs, 1, 3)
                 
-                print("Inputs shape is : ", inputs.shape)
-                print("Mask shape is : ", labels.shape)
+                #print("Inputs shape is : ", inputs.shape)
+                #print("Mask shape is : ", labels.shape)
                 
                 optimizer.zero_grad()
                 masks = self.model(inputs).squeeze()
                 loss = criterion(masks, labels)
                 loss.backward()
                 optimizer.step()
-
+                print(masks)
+                print("predictions sum is : ", torch.sum(masks))
+                print("predictions std is : ", torch.std(masks))
+                print("predictions mean is : ", torch.mean(masks))
+                
+                # loss can take unthresholded masks
                 running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(masks == labels)
-                n_samples += inputs.size(0)
+                running_corrects += torch.sum((masks>threshold) == labels)
+                n_samples += inputs.shape[0]*inputs.shape[2]*inputs.shape[3] # n_channels*img_dim*img_dim - since we are computing accuracy on a pixel level 
 
             epoch_loss = running_loss / n_samples
             epoch_acc = running_corrects.double() / n_samples
@@ -142,9 +149,71 @@ class TrainModel():
                 if epoch_acc > target_accuracy:
                     print("Early Stopping")
                     break
-        
         return epoch_loss, epoch_acc
-   
+    
+    def evaluate(self):
+        # Create empty dictionaries to store evaluation metrics
+        metrics_train = {}
+        metrics_val = {}
+        metrics_test = {}
+
+        # Evaluate on the training dataset
+        train_preds, train_labels = self.predict(self.train_loader)
+        train_preds = train_preds.reshape(-1)
+        train_labels = train_labels.reshape(-1)
+        print("train_preds shape is : ", train_preds.shape)
+        print("train_labels shape is : ", train_labels.shape)
+        #print(train_preds)
+        #print(train_labels)
+        metrics_train["Precision"] = precision_score(train_preds, train_labels)
+        metrics_train["Recall"] = recall_score(train_preds, train_labels)
+        metrics_train["Accuracy"] = accuracy_score(train_preds, train_labels)
+        metrics_train["F1-Score"] = f1_score(train_preds, train_labels)
+
+        # Evaluate on the validation dataset
+        val_preds, val_labels = self.predict(self.val_loader)
+        val_preds = val_preds.reshape(-1)
+        val_labels = val_labels.reshape(-1)
+        metrics_val["Precision"] = precision_score(val_preds, val_labels)
+        metrics_val["Recall"] = recall_score(val_preds, val_labels)
+        metrics_val["Accuracy"] = accuracy_score(val_preds, val_labels)
+        metrics_val["F1-Score"] = f1_score(val_preds, val_labels)
+        
+        # Evaluate on the test dataset
+        test_preds, test_labels = self.predict(self.test_loader)
+        test_preds = test_preds.reshape(-1)
+        test_labels = test_labels.reshape(-1)
+        metrics_test["Precision"] = precision_score(test_preds, test_labels)
+        metrics_test["Recall"] = recall_score(test_preds, test_labels)
+        metrics_test["Accuracy"] = accuracy_score(test_preds, test_labels)
+        metrics_test["F1-Score"] = f1_score(test_preds, test_labels)
+        
+        # Create dataframes for the evaluation metrics
+        df_train = pd.DataFrame(metrics_train, index=["Train"])
+        df_val = pd.DataFrame(metrics_val, index=["Validation"])
+        df_test = pd.DataFrame(metrics_test, index=["Test"])
+
+        # Concatenate the dataframes to create a single dataframe
+        evaluation_df = pd.concat([df_train, df_val, df_test])
+
+        return evaluation_df
+
+    def predict(self, dataloader):
+        # Function to generate predictions from the model for a given dataloader
+        predictions = []
+        labels = []
+        self.model.eval()
+        with torch.no_grad():
+            for batch in dataloader:
+                inputs = batch['data']
+                # change input shape to (batch_size, n_channels, img_dim, img_dim)
+                inputs = torch.swapaxes(inputs, 1, 3)
+                masks = self.model(inputs).squeeze()
+                predictions.extend(masks.cpu().numpy())
+                labels.extend(batch['mask'].cpu().numpy())
+        return (np.array(predictions) > 0.5).astype(int), np.array(labels)  # Apply threshold for binary prediction
+
+        
    
     # # PRACTICALLY DONT NEED THIS FUNCTION IN ACTIVE INFERENCE 
     # def evaluate(self):

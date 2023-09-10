@@ -50,13 +50,19 @@ async def train(payload:TrainPayload):
     print(unetModel.__dict__)
    
     # test two - being able to load the data properly
-    unetModel.load_data(n_samples=payload.n_samples,
+    unetModel.load_data(n_channels=payload.n_channels,
+                        n_samples=payload.n_samples,
                         img_dim=payload.img_dim,  
                         percent_test=payload.percent_test,
                         batch_size=payload.batch_size,
                         num_workers=payload.n_cpus) 
     # test 3 run some supervised training
     unetModel.train(n_epochs=payload.n_epochs) 
+    
+    eval_df = unetModel.evaluate()
+    return_dict = {"msg": "Completed Training",
+                     "results": eval_df.to_dict()}
+    return return_dict
     # loads data
     # model.process_data(payload.img_dim, payload.n_channels, payload.train_scan, payload.test_scan, payload.append_path)
     # logger.info("Data has been successfully processed")
@@ -70,6 +76,7 @@ async def train(payload:TrainPayload):
 @app.post("/predict")
 async def predict(payload:PredictionPayload):
     #sample = pd.json_normalize(payload.data) 
+    
     inferenceEngine = WaveInference(model_name=payload.model_name,
                                     model_path=payload.model_path)
     
