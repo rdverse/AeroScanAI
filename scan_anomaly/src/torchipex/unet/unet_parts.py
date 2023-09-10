@@ -53,10 +53,10 @@ class Up(nn.Module):
             self.conv = DoubleConv(in_channels, out_channels)
 
     def forward(self, x1, x2):
-        print("x1 shape:", x1.shape)
-        print("x2 shape:", x2.shape)
+        #print("x1 shape:", x1.shape)
+        #print("x2 shape:", x2.shape)
         x1 = self.up(x1)
-        print("x1 shape after up:", x1.shape)
+        #print("x1 shape after up:", x1.shape)
         # input is CHW
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]

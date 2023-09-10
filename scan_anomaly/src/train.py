@@ -20,7 +20,9 @@ from sklearn.ensemble import RandomForestClassifier  # pylint: disable=C0415
 from sklearn import metrics  # pylint: disable=C0415
 from sklearnex import patch_sklearn
 patch_sklearn()
+from data_utils import synthetic_defects
 
+ 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
@@ -38,9 +40,9 @@ class WaveformProbe():
         self.model_path = ''
         self.hypparameters = ''
         
-    def process_data(self, file: str, test_size: int = .25):
+   # def process_data(self, file: str, test_size: int = .25):    
+    def process_data(self, img_dim : int, n_channels : int, train_scan : str, test_scan : str, append_path: str): 
         """_summary_
-
         Parameters
         ----------
         file : str
@@ -48,26 +50,27 @@ class WaveformProbe():
         test_size : int, optional
             _description_, by default .25
         """
-
         # Generating our data
-        logger.info('Reading the dataset from %s...', file)
+        logger.info('Reading the dataset from %s...', append_path)
         # try:
         #     data = pd.read_pickle(file)
         # except FileNotFoundError:
         #     # pass
         #     sys.exit(f'Data loading error, file not found at {file}')
 
-        data = np.random.randint(low=0, high=20, size=(1000, 10))
-        X = data
-        y = np.random.randint(low=0, high=2, size=(1000, 1))
+        #data = np.random.randint(low=0, high=20, size=(1000, 10))
+        #X = data
+        #y = np.random.randint(low=0, high=2, size=(1000, 1))
+        
         #X = data.drop('defect', axis=1)
         #y = data.defect
 
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
-        
+#        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
+        self.X_train, self.y_train, pixelmap_train, columns = synthetic_defects(img_dim, n_channels, train_scan, stat_features=False)
+        self.X_test, self.y_test, pixelmap_test, columns = synthetic_defects(img_dim, n_channels, test_scan, stat_features=False)
+                
     def grid_search(self, ncpu: int = 1):
         """_summary_
-
         Returns
         -------
         _type_
@@ -126,7 +129,10 @@ class WaveformProbe():
         preds = {}
         # Run inference on 10 samples
         for i in range(10):  # pylint: disable=C0415,W0612
-            sample_x = self.X_test[np.random.randint(0, len(self.X_test), 1)]
+            print(self.X_test)
+            print(len(self.X_test))
+            sample_x = self.X_test.loc[i].to_numpy()#[np.random.randint(0, len(self.X_test), 1)]
+            sample_x = np.array([sample_x])
             start_time = time.time()
             y_pred = self.model_rf.predict(sample_x)
             individual_stream_times.append(time.time()-start_time)
