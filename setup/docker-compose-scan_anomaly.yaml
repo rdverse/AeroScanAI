@@ -3,6 +3,7 @@ services:
   scan_anomaly:
     build:
       context: ../scan_anomaly/
+      shm_size: '4gb'
       dockerfile: Dockerfile
     ports:
       - 5003:5003

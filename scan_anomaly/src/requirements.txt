@@ -5,12 +5,11 @@ pandas
 scikit-learn-intelex 
 uvicorn
 scipy      
-#torch
-#torchvision
+torch
+torchvision
 lime
---index-url https://download.pytorch.org/whl/cpu/stable.html
-torch>=1.0.0+cpu
-torchvision>=0.1.0+cpu
-torchaudio>=0.1.0
+#torch>=1.0.0+cpu @ https://download.pytorch.org/whl/cpu/stable.html
+#torchvision>=0.1.0+cpu @ https://download.pytorch.org/whl/cpu/stable.html
+#torchaudio>=0.1.0 @ https://download.pytorch.org/whl/cpu/stable.html
 intel_extension_for_pytorch
 plotly
