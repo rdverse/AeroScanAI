@@ -5,36 +5,67 @@ import time
 import matplotlib.pyplot as plt
 import torch
 import logging
-import intel_extension_for_pytorch as ipex
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+#import intel_extension_for_pytorch as ipex
 # from ipex.training.MvtecAdDataset import MvtecAdDataset
 # from ipex.utils.base_model import AbstractModelInference, AbstractModelTraining
 # from ipex.utils.utils import data_augmentation, plot_confusion_matrix, get_bbox_from_heatmap
-from torch.utils.data import DataLoader
+#from torchipex.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import balanced_accuracy_score, f1_score
-import simulatedDataset
+#import simulatedDataset
+#import torch.nn as nn
+from torchipex.training.SimulatedDataset import SimulatedDataset
+from torchipex.unet.unet_model import UNet
+# return none
+# def simulatedDataset():
+#     return None 
 
 class TrainModel(): 
-    def __init__(self, model,mode) -> None:
+    # add an argument called mode 
+    def __init__(self) -> None:
         self.train_loader = []
         self.test_loader = []
-        self.model = model
-        #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
- 
-    def load_data(self, n_samples, img_dim,  percenttest, batch_size, num_workers):
+        self.model = None
+    
+    # def load_model(self, n_channels, n_classes, img_dim):
+    #     model = UNet(n_channels=n_channels, n_classes=n_classes, img_dim =img_dim)
+    def load_model(self, n_channels, n_classes, img_dim):
+        self.model = UNet(n_channels=n_channels, 
+                          n_classes=n_classes, 
+                          img_dim = img_dim)
+        
+    def load_data(self, n_samples, 
+                  img_dim, 
+                  percent_test,
+                  batch_size,
+                  num_workers):
         self.n_samples = n_samples
-        self.percenttest = percenttest  
+        self.percent_test = percent_test  
         self.batch_size = batch_size    
         self.num_workers = num_workers  
         self.img_dim = img_dim
         
-        n_train_samples = int(self.n_samples * (1 - self.percenttest))
-        n_val_samples = int(self.n_samples * (self.percenttest))
+        n_train_samples = int(self.n_samples * (1 - self.percent_test))
+        n_val_samples = int(self.n_samples * (self.percent_test))
         n_test_samples = n_val_samples
         
-        train_dataset = simulatedDataset()
-        val_dataset = simulatedDataset()
-        test_dataset = simulatedDataset()
+        train_dataset = SimulatedDataset(img_dim = self.img_dim,
+                                         n_channels = 10,
+                                         n_samples = n_train_samples,
+                                         defect_coverage=0.75,
+                                         random_seed=0)
+        val_dataset = SimulatedDataset(img_dim = self.img_dim,
+                                         n_channels = 10,
+                                         n_samples = n_val_samples,
+                                         defect_coverage=0.75,
+                                         random_seed=2)
+        test_dataset = SimulatedDataset(img_dim = self.img_dim,
+                                         n_channels = 10,
+                                         n_samples = n_test_samples,
+                                         defect_coverage=0.75,
+                                         random_seed=4)
         loader_args = dict(batch_size=self.batch_size, num_workers=self.num_workers)
         print(loader_args)  
         print(train_dataset)
@@ -55,22 +86,22 @@ class TrainModel():
         ''')
 
 
-    def train(self, epochs=5, target_accuracy=None, learning_rate= 0.0001, data_aug=False):
+    def train(self, n_epochs=5, target_accuracy=None, learning_rate= 0.0001, data_aug=False):
         
         #criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
-        criterion = torch.nn.BCEwithLogitsLoss()
+        criterion = torch.nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        try:
-            model, optimizer = ipex.optimize(model=self.model, optimizer=optimizer, dtype=torch.float32)
-        except Exception as e:
-            print("IPEX error : Ignoring IPEX optimization")
-            model = self.model
-            optimizer = optimizer
+        # try:
+        #     model, optimizer = ipex.optimize(model=self.model, optimizer=optimizer, dtype=torch.float32)
+        # except Exception as e:
+        #     print("IPEX error : Ignoring IPEX optimization")
+        #     model = self.model
+        #     optimizer = optimizer
             
         self.model.train()
 
-        for epoch in range(1, epochs + 1):
-            print(f"Epoch {epoch}/{epochs}:", end=" ")
+        for epoch in range(1, n_epochs + 1):
+            print(f"Epoch {epoch}/{n_epochs}:", end=" ")
             running_loss = 0
             running_corrects = 0
             n_samples = 0
@@ -84,9 +115,17 @@ class TrainModel():
             #     inputs = inputs.to(self.device)
             #     labels = labels.to(self.device)
             # batch iteration
-            for inputs, labels in self.train_loader:
+            for batch in self.train_loader:
+                inputs = batch['data']
+                labels = batch['mask']
+                # change input shape to (batch_size, n_channels, img_dim, img_dim)
+                inputs = torch.swapaxes(inputs, 1, 3)
+                
+                print("Inputs shape is : ", inputs.shape)
+                print("Mask shape is : ", labels.shape)
+                
                 optimizer.zero_grad()
-                masks = self.model(inputs)
+                masks = self.model(inputs).squeeze()
                 loss = criterion(masks, labels)
                 loss.backward()
                 optimizer.step()

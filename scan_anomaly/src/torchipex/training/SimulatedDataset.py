@@ -6,20 +6,29 @@ from sklearn.preprocessing import MinMaxScaler
 # IMPORTANT : IF YOU NEED TO MODIFY THE DEFECT GO TO CHECKPOINT101 ( in comments )
 
 
-class simulatedDataset(Dataset):
-    def __init__(self, img_dim, n_channels, n_samples, defect_coverage=0.75):
+class SimulatedDataset(Dataset):
+    def __init__(self, img_dim, 
+                 n_channels, 
+                 n_samples, 
+                 defect_coverage=0.75, 
+                 random_seed=0):
         self.img_dim = img_dim
         self.n_channels = n_channels
+        self.n_samples = n_samples
         self.defect_coverage = defect_coverage
-        self.random_seeds = np.arange(0, n_samples, n_samples)
+        self.random_seed = random_seed*10000
+        self.random_seeds = np.arange(self.random_seed, 
+                                      self.random_seed+self.n_samples, 
+                                      1)
         self.scale = MinMaxScaler()
+        self.random_seed = random_seed
         
     def __len__(self):
-        return len(self.data)
+        return self.n_samples
     
     def __getitem__(self, idx):
-        data, mask = self.synthetic_defects(self.random_seeds[idx])
-        data = np.round(self.scale.fit_transform(self.data.reshape(-1, 10)).reshape(self.img_dim, self.img_dim, self.n_channels), 3)
+        data, mask, pixelmap = self.synthetic_defects(self.random_seeds[idx])
+        data = np.round(self.scale.fit_transform(data.reshape(-1, 10)).reshape(self.img_dim, self.img_dim, self.n_channels), 3)
         
         sample = {
             'data': torch.tensor(data, dtype=torch.float32),
@@ -27,8 +36,8 @@ class simulatedDataset(Dataset):
         }
         return sample
 
-    def synthetic_defects(self, random_seed=0):
-        np.random.seed(random_seed)
+    def synthetic_defects(self, current_seed):
+        np.random.seed(current_seed)
         def random_sine_wave(length, defect=True):
             # Generate a random amplitude
             amplitude = random.uniform(0.1, 1.0)
