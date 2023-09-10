@@ -13,3 +13,4 @@ torch>=1.0.0+cpu
 torchvision>=0.1.0+cpu
 torchaudio>=0.1.0
 intel_extension_for_pytorch
+plotly

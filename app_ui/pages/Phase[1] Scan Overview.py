@@ -106,12 +106,61 @@ with app_tab:
         else:
             st.success('Inference was Succesful')
             #st.info(INFERENCE_RESPONSE.text)
-            preds = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('preds')))
-            labels = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('labels')))
-            inputs = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('inputs')))
-            st.image(preds)
-            #st.image(labels)
-            #st.image(inputs)
+            preds = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('preds')))*255
+            labels = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('labels'))).squeeze()*255
+            inputs = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('inputs'))).squeeze()
+            colb1, colb2, colb3 = st.columns(3)
+            with colb1:
+                st.info("Input")
+                st.image(inputs)
+            with colb2:
+                st.info("Prediction")
+                st.image(preds)
+            with colb3:
+                st.info("Ground Truth")
+                st.image(labels)
+                
+            # st.image(preds)
+            # st.info(str(preds.shape))
+            # st.info(str(labels.shape))
+            # st.info(str(inputs.shape))
+            #st.info("min and max of inputs: " + str(np.min(inputs)) + " " + str(np.max(inputs)))
+            st.info("min and max of preds: " + str(np.min(preds)) + " " + str(np.max(preds)))
+            st.info("min and max of labels: " + str(np.min(labels)) + " " + str(np.max(labels)))
+            from collections import Counter
+            st.info("Counter of preds: " + str(Counter(preds.flatten())))
+            st.info("Counter of labels: " + str(Counter(labels.flatten())))
+            # st.info(str(inputs))
+            st.info(str(preds))
+            st.info(str(labels))
+            
+                    # Sample image data
+            image = np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8)
+            import matplotlib.pyplot as plt
+            # Create a Matplotlib figure
+            fig, ax = plt.subplots()
+            ax.imshow(image)
+            ax.set_xticks(np.arange(0, len(image[0]), 10))
+            ax.set_yticks(np.arange(0, len(image), 10))
+            ax.grid(which='both', color='white', linewidth=1)
+
+            st.pyplot(fig)
+            
+            
+            image = np.random.randint(0, 256, (256, 256), dtype=np.uint8)
+            
+            # Create a Plotly heatmap for image display
+            fig = px.imshow(image, color_continuous_scale="gray")
+            fig.update_layout(
+                title="Hover over the heatmap",
+                xaxis_title="X Coordinate",
+                yaxis_title="Y Coordinate",
+            )
+
+            # Display the Plotly figure
+            st.plotly_chart(fig)
+                # st.image(labels)
+            # st.image(inputs)
             #st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
             
 #     # Separator
