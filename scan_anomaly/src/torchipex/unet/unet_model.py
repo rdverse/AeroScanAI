@@ -92,6 +92,43 @@ class UNet(nn.Module):
         print("Shape of logits after if else: ", logits.shape)
         return logits
     
+    def forward_debug(self, x):
+        print("Shape of x: ", x.shape, "before inc")
+        x0 = self.inc(x)
+        print("Shape of x: ", x.shape, "after inc")
+        # Down path
+        down_outputs = []
+        down_outputs.append(x0)
+        for i, layer in enumerate(self.down_layers):
+            print(f"Shape of x: {x.shape} before downlayer {i}")
+            x = layer(x)
+            print(f"Shape of x: {x.shape} after downlayer {i}")
+            down_outputs.append(x)
+            print()
+
+        # Up path
+        for idx, layer in enumerate(self.up_layers):
+            print(f"Shape of x: {x.shape} before uplayer {idx}")
+            print("x is fusing with the down layer of shape: ", down_outputs[-(idx +2)].shape) 
+            x = layer(x, down_outputs[-(idx +2)])
+            print(f"Shape of x: {x.shape} after uplayer {idx}")
+            print()
+            
+        print("Shape of x: ", x.shape, "before up_last")
+        x = self.up_last(x, x0)
+        print("Shape of x: ", x.shape, "after up_last")
+        
+        logits = self.outc(x)
+        print("Shape of logits: ", len(logits), logits[0].shape)
+        
+        if self.binary:
+            logits = self.outb(logits)
+        else:   
+            logits = logits
+        print("Checking n classes: ", self.n_classes)
+        print("Shape of logits after if else: ", logits.shape)
+        return logits
+ 
 
 # for saving model in the main function
 # def save_checkpoint(state, filename='checkpoint.pth.tar'):
