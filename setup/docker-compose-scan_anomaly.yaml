@@ -12,8 +12,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1' # Limit to half a CPU core
-          memory: 512M # Limit to 256 megabytes of memory
+          cpus: '8' # Limit to half a CPU core
+          memory: 4096M # Limit to 256 megabytes of memory
     restart: on-failure
     
   app_ui:
