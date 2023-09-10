@@ -1,0 +1,15 @@
+version: '3'
+services:
+  scan_anomaly:
+    build:
+      context: ../scan_anomaly/
+      dockerfile: Dockerfile
+    volumes:
+      - ../box:/scan_anomaly/box
+      - ../scan_anomaly:/scan_anomaly
+    deploy:
+      resources:
+        limits:
+          cpus: '8' # Limit to half a CPU core
+          memory: 4096M # Limit to 256 megabytes of memory
+    restart: on-failure
