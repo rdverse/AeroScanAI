@@ -93,24 +93,28 @@ def synthetic_defects(img_dim, n_channels, scan_type, stat_features=True):
                 else:
                     data[i][j] = random_sine_wave(n_channels, defect=False)
 
-    sine = random_sine_wave(n_channels, defect=True)
+    #sine = random_sine_wave(n_channels, defect=True)
     #plt.plot(sine)
     # Plot the array
     #print(np.min(data), np.max(data))
     scale = MinMaxScaler()
-    data = np.round(scale.fit_transform(data.reshape(-1, n_channels)))#.reshape(64, 64, n_channels), 3)
-    if stat_features:
-        data = feature_builder(data)
-     # last column is defect
-     #columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "backwall", "frontwall", "ramp",  "geometry", "defect"]
-     # add zeros where the new artificial features will be
-    columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "qc1", "qc2", "qc3", "qc4", "defect"]
+    data = scale.fit_transform(data.reshape(-1, n_channels))#.reshape(64, 64, n_channels), 3)
     mask = mask.reshape(-1,).reshape(-1,1)
     pixelmap = pixelmap.reshape(img_dim, img_dim, 2).reshape(-1, 2)
+    if stat_features:
+        data = feature_builder(data)
+        # last column is defect
+        #columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "backwall", "frontwall", "ramp",  "geometry", "defect"]
+        # add zeros where the new artificial features will be
+        columns = ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "qc1", "qc2", "qc3", "qc4", "defect"]
+        # add zeros for the quality checks
+        data = np.column_stack((data, np.zeros((data.shape[0], 4))))
+    else:
+        columns= [str(i) for i in range(n_channels)]
+        columns.append("defect")
     #data = data.astype(np.float16) - 4 times lighter than float64 but going with float32 for now
+    
     print(np.min(data), np.max(data), np.median(data))
-
-    data = np.column_stack((data, np.zeros((data.shape[0], 4))))
     data = np.column_stack((data, mask))
     df = pd.DataFrame(data, columns=columns)
     logger.info("mask shape is %s", mask.shape)
@@ -186,9 +190,16 @@ def append_data(data_path, data):
     print("Data saved to pickle file.")
     return {"msg": f"Data points before appending : {previousdatalen}, and data points after appending: {len(combined_data)}"}
 
-def fetch_coordinates_data(img_dim, n_channels, test_scan, x_coord, y_coord):
-    features, labels, pixelmap, columns = synthetic_defects(img_dim=img_dim, n_channels=n_channels, scan_type=test_scan)
-    #print(pixelmap)
+def fetch_coordinates_data(x_coord, y_coord, img_dim=None, n_channels=None, test_scan=None,  stat_features=True, data=None, pixelmap=None):   
+    if data is not None and pixelmap is not None:
+        features = data
+        labels = None
+        pixelmap = pixelmap
+        columns = None
+    else:
+        features, labels, pixelmap, columns = synthetic_defects(img_dim=img_dim, n_channels=n_channels, scan_type=test_scan, stat_features=stat_features)
+    print()
+    print(data)
     indices = np.where(np.all(pixelmap==[x_coord, y_coord], axis=1))
     #print(indices)
     if len(indices[0]) == 0:
@@ -197,4 +208,7 @@ def fetch_coordinates_data(img_dim, n_channels, test_scan, x_coord, y_coord):
         assert len(indices[0]) == 1, "more than one index found"
         selected_data  = features.iloc[indices[0]]
         #print(selected_data)
-        return selected_data.to_dict(orient="records")
+        if data is not None:
+            return selected_data
+        else:
+            return selected_data.to_dict(orient="records")
