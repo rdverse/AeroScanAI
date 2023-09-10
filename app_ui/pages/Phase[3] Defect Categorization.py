@@ -1,3 +1,6 @@
+import os
+import json
+import pandas as pd
 import streamlit as st
 from PIL import Image
 import requests
@@ -9,6 +12,8 @@ st.title('Defect class identification and categorization')
 app_tab, help_tab = st.tabs(["Application", "Help"])
 
 with app_tab:
+    ####################PART-1 MODEL TRAINING #################################
+    "st.session_state object:" , st.session_state
     # Header image
     col11, col22 = st.columns(2)
     with col11:
@@ -28,7 +33,6 @@ with app_tab:
         )
     # Separator
     st.divider()
-    # Patient readmission prediction model training
     st.markdown(
         """
         #### Model training for defect classification.
@@ -83,24 +87,97 @@ with app_tab:
             st.info(TRAINING_RESPONSE.text)
             st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
 
+    ####################PART-2 : Partial dependence visualization##############################
     # Separator
     st.divider()
+    def update_slider():
+        st.session_state.slider = st.session_state.numeric
+    def update_numin():
+        st.session_state.numeric = st.session_state.slider            
+
+    val = st.number_input('Input', value = 0, key = 'numeric', on_change = update_slider)
+
+
+    slider_value = st.slider('slider', min_value = 0, 
+                            value = val, 
+                            max_value = 5,
+                            step = 1,
+                            key = 'slider' )
 
     st.markdown(
         """
         #### Partial dependence analysis of a feature on outcome.
         """
     )
-
     selected_model_path = st.text_input('Selected Model Path',key='model path selection', value='./box/models/defect_classify/model.joblib')
     col21, col22, col23 = st.columns(3)
+    fetched_data = None 
     
+    def update_data(data):
+        
+        #st.info("fetched_data : {}".format(data))
+        #print("fetched_data : {}".format(data))
+        dfcols = {"qc1": "Quality Check-1", "qc2": "Quality Check-2", "qc3": "Quality Check-3", "qc4": "Quality Check-4", "min": "Minimum Value", "max": "Maximum Value", "mean": "Mean", "std": "Standard Deviation", "snr": "Signal-to-Noise Ratio", "num_peaks": "Number of Peaks"}
+        df = pd.DataFrame(data)
+        df.rename(columns=dfcols, inplace=True) 
+        df = df.T
+        df.reset_index(inplace=True)
+        df.columns = ["Feature", "Value"]
+       # df.columns = ["Feature", "Value"]
+       # st.table(df)
+        df.style.background_gradient(axis=None, vmin=1, vmax=5, cmap="YlGnBu")
+        cell_hover = {  # for row hover use <tr> instead of <td>
+        'selector': 'td:hover',
+        'props': [('background-color', '#ffffb3')]
+        }
+        index_names = {
+        'selector': '.index_name',
+        'props': 'font-style: italic; color: darkgrey; font-weight:normal;'
+        }
+        headers = {
+        'selector': 'th:not(.index_name)',
+        'props': 'background-color: #FFFDF4BF; color: #FF3399FF;'
+        }
+        df = df.style.set_table_styles([cell_hover, index_names, headers])
+        df = df.set_table_styles([
+            {'selector': 'th.col_heading', 'props': 'text-align: center;'},
+            {'selector': 'th.col_heading.level0', 'props': 'font-size: 1.5em;'},
+            {'selector': 'td', 'props': 'text-align: center; font-weight: bold;'},
+        ], overwrite=False)
+        st.table(df)
+        # st.session_state.min = data['min']
+        # st.session_state.max = data['max']
+        # st.session_state.mean = data['mean']
+        # st.session_state.snr = data['snr']
+        # st.session_state.std = data['std']
+        # st.session_state.num_peaks = data['num_peaks']
+        # st.session_state.qc1 = data['qc1']
+        # st.session_state.qc2 = data['qc2']
+        # st.session_state.qc3 = data['qc3']
+        # st.session_state.qc4 = data['qc4']
+                
     with col21:
         st.info("Select from scan?")
-        
-        st.info("X and Y Coordinates from the original scan")
+        #st.info("X and Y Coordinates from the original scan")
         x_coord = st.slider('X Coordinate', min_value=0, max_value=512, step=1, value=5)
         y_coord = st.slider('Y Coordinate', min_value=0, max_value=512, step=1, value=5)
+        
+        if st.button('Fetch data', key='fetch_data'):
+            URL = 'http://defect_classify:5001/fetch_coordinates_data'
+            DATA = {'img_dim': img_dim, 'n_channels': n_channels, 'test_scan': test_scan, 'x_coord':x_coord, 'y_coord':y_coord}
+            DATA_RESPONSE = requests.post(url = URL, json = DATA)
+           
+            
+            #st.info(DATA_RESPONSE.text)
+            if DATA_RESPONSE.text != None:
+                data = json.loads(DATA_RESPONSE.text)["fetched_data"]#[0]
+                update_data(data = data)
+            else:
+                st.info("Coordinates out of range")
+                
+                update_data(DATA_RESPONSE.text)
+            # Now call the update function from here to update sample data    
+            #st.info()
         with st.expander("More info on quality checks"):
             st.info("""
                    ###### Quality checks are binary features indicating no issue or indcating presence of an issue.
@@ -108,22 +185,20 @@ with app_tab:
                     """)    
     with col22:
         st.info("Inspector's Input")
-        qc1 = st.selectbox('Quality Check-1', [0,1])
-        qc2 = st.selectbox('Quality Check-2', [0,1])
-        qc3 = st.selectbox('Quality Check-3', [0,1])
-        qc4 = st.selectbox('Quality Check-4', [0,1])
+        qc1 = st.selectbox('Quality Check-1', [0,1], key='qc1')
+        qc2 = st.selectbox('Quality Check-2', [0,1], key='qc2')
+        qc3 = st.selectbox('Quality Check-3', [0,1], key='qc3')
+        qc4 = st.selectbox('Quality Check-4', [0,1], key='qc4')
 
-# ['min', 'max', 'mean', 'std', 'snr', 'num_peaks', "backwall", "frontwall", "ramp",  "geometry", "defect"]
     with col23:
         st.info("waveform characteristics")
-        min = st.slider('Minimum Value', min_value=0.00, max_value=10.00, step=.05, value=5.00)
-        max = st.slider('Maximum Value', min_value=0.00, max_value=10.00, step=.05, value=5.00)
-        mean = st.slider('Mean', min_value=0.00, max_value=10.00, step=.05, value=5.00)
-        snr = st.slider('Signal-to-Noise Ratio', min_value=0.00, max_value=10.00, step=.05, value=5.00)
-        std = st.slider('Standard Deviation', min_value=0.00, max_value=10.00, step=.05, value=5.00)
-        num_peaks = st.slider('Number of Peaks', min_value=0, max_value=100, step=1, value=5)
+        min = st.slider('Minimum Value', min_value=0.00, max_value=10.00, step=.05, value=5.00, key='min')
+        max = st.slider('Maximum Value', min_value=0.00, max_value=10.00, step=.05, value=5.00  , key='max')
+        mean = st.slider('Mean', min_value=0.00, max_value=10.00, step=.05, value=5.00, key='mean')
+        snr = st.slider('Signal-to-Noise Ratio', min_value=0.00, max_value=10.00, step=.05, value=5.00, key='snr')
+        std = st.slider('Standard Deviation', min_value=0.00, max_value=10.00, step=.05, value=5.00, key='std')
+        num_peaks = st.slider('Number of Peaks', min_value=0, max_value=100, step=1, value=5, key='num_peaks')
     
-    #sample = [{'backwall':1, 'frontwall':1, 'ramp':1, 'geometry':1, 'no_peaks':1, 'noise':1, 'max':1, 'min':1, 'signal_noise_ratio':1}]
     sample = [{'qc1':qc1, 'qc2':qc2, 'qc3':qc3, 'qc4':qc4, 'min':min, 'max':max, 'mean':mean, 'std':snr, 'snr': std,'num_peaks':num_peaks}]
 
     if st.button('Defect Categorization', key='analysis'):
@@ -159,7 +234,7 @@ with app_tab:
         else:
             st.success(str(DATAAPPEND_RESPONSE.json()))#.get('Maintenance Recommendation')))
 # Help tab frontend below
-    
+############################### HELP TAB#################################
 with help_tab:
     st.markdown("#### Input Descriptions for Ultrasonic NDT Testing:")
     st.markdown("### Quality Checks: 1 and 2")
