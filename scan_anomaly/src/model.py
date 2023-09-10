@@ -1,17 +1,24 @@
 from pydantic import BaseModel
 
 class PredictionPayload(BaseModel):
+    model_name : str
     model_path: str
-    data_path: str
-    num_class: int = 2
-    # remove scaler since random forest won't have much influence of scaling features
+    img_dim : int
+    n_channels : int
+    n_classes : int = 1
+    test_scan : str
+    num_class: int = 1 
     
 class TrainPayload(BaseModel):
-    n_samples: int
     img_dim: int
-    defect_coverage: float
-    file: str
+    n_channels: int
+    n_classes: int = 1
+    n_samples: int
     model_name: str
     model_path: str
-    ncpu: int = 1
+    n_cpus: int = 8
+    n_epochs: int = 10
+    batch_size: int = 32
+    percent_test: float = 0.2
     
+
