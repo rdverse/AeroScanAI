@@ -114,7 +114,6 @@ with app_tab:
     fetched_data = None 
     
     def update_data(data):
-        
         #st.info("fetched_data : {}".format(data))
         #print("fetched_data : {}".format(data))
         dfcols = {"qc1": "Quality Check-1", "qc2": "Quality Check-2", "qc3": "Quality Check-3", "qc4": "Quality Check-4", "min": "Minimum Value", "max": "Maximum Value", "mean": "Mean", "std": "Standard Deviation", "snr": "Signal-to-Noise Ratio", "num_peaks": "Number of Peaks"}

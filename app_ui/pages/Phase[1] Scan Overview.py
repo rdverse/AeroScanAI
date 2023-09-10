@@ -17,13 +17,12 @@ with app_tab:
         image = Image.open('./assets/waveform2.png')
         st.image(image)
         st.markdown("""
-                    ###### Phase 1 : 
+                    ###### 3D-UNet model with adaptive input training
                     """)
     with col22:
         st.markdown("""
-            ##### Phase 1 : Analyze waveform of each pixel in a 3D scan. 
-            Specifically, train a random forest model on with raw waveform data and 
-            use explainable-AI for inference and learn what parts of waveform were given most importance.   
+            ##### Phase 1 : Train a model using 3D scans with defects and without defects.
+            This gives an overview of the data and the areas that might potentially have a defect.   
             """)
         
     cola1, cola2, cola3 = st.columns(3)
@@ -55,7 +54,7 @@ with app_tab:
     st.divider()
     st.markdown(
         """
-        #### Waveform model training
+        #### Model Training results
         """    )
     # Input data
     # data_file = st.text_input('Training Data File Path', key='data', value='./box/datasets/scan_anomaly/train.csv')
@@ -82,10 +81,16 @@ with app_tab:
                 'percent_test': percent_test
                 }
 
-        print(DATA)
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
-        print(TRAINING_RESPONSE)
-        st.info(TRAINING_RESPONSE)
+        
+        if len(TRAINING_RESPONSE.text) < 40:       
+            st.error("Model Training Failed")
+            st.info(TRAINING_RESPONSE.text)
+        else:
+            st.info(TRAINING_RESPONSE.json().get('msg'))
+            st.table(pd.DataFrame.from_dict(TRAINING_RESPONSE.json().get('results')))
+        
+        
         # Check the response status code
         # if len(TRAINING_RESPONSE.text) < 40:       
         #     st.error("Model Training Failed")
