@@ -4,6 +4,7 @@ import requests
 import ast
 import pandas as pd
 import numpy as np
+import plotly.express as px
 # Set the title of the app
 st.title('Scan Anomaly Detection')
 
