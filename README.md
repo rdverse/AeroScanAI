@@ -36,6 +36,10 @@ sudo apt-get update && sudo apt-get install make
 ```
 6. make launch-all
 (see the Makefile in setup folder for launching one module at a time)
+    6.a make launch-scan_anomaly (for phase-1 only)
+    6.b make launch-waveform_probe (for phase-2 only)
+    6.c make launch-defect_classify (for phase-3 only) 
+    6.d make launch-app_ui (for ui only)
 ```
 
 ```
