@@ -49,7 +49,7 @@ with app_tab:
         
     with cola2:    
         n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=128, value=10, step=1)
-        img_dim = st.selectbox('Image Dimension', [8,16,32,64,128,256,512], placeholder="64")
+        img_dim = st.selectbox('Image Dimension', [16,32,64,128], placeholder="64")
         model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
         with st.expander("More info on data"):
             st.info("""
