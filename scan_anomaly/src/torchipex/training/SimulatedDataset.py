@@ -5,7 +5,6 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 # IMPORTANT : IF YOU NEED TO MODIFY THE DEFECT GO TO CHECKPOINT101 ( in comments )
 import math
-
 class SimulatedDataset(Dataset):
     def __init__(self, img_dim, 
                  n_channels, 
@@ -63,7 +62,6 @@ class SimulatedDataset(Dataset):
                         dampen_start = np.random.randint(0, self.n_channels - dampen_width - 1)
                         dampen_end = dampen_start + dampen_width
                         sine_wave[dampen_start:dampen_end] = 0
-                    
             sine_wave += noise
             return sine_wave
         np.random.seed(current_seed)

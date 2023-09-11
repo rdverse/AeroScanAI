@@ -21,11 +21,12 @@ with app_tab:
         image = Image.open('./assets/fuselage.jpg')
         st.image(image)
         st.markdown("""
-                    ###### 3D-UNet model with adaptive input training
+                    ###### 3D-UNet model with adaptive input training and active learning.
                     """)
     with col22:
         st.markdown("""
             ##### Phase 1 : Train a model using 3D scans with defects and without defects.
+            Here we also employ an active learning approach that relies on the user to set a prediction threshold and learn to differentiate between defects and no defects without labels.
             This gives an overview of the data and the areas that might potentially have a defect.   
             """)
         
@@ -45,10 +46,10 @@ with app_tab:
 
     with cola2:    
         st.info("Data Parameters")
-        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=512, value=10, step=1)
+        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=124, value=10, step=1)
         n_classes = st.selectbox('Number of classes', [1], placeholder="1")
         n_samples = st.slider('Number of samples',min_value=100, max_value=10000, value=100, step=100)
-        img_dim = st.selectbox('Image Dimension', [16,32,64,128,256,512], placeholder="64")
+        img_dim = st.selectbox('Image Dimension', [16,32,64,128], placeholder="64")
         percent_test = st.slider('Percentage of data saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
         #with st.expander("More info on data"):
     
@@ -154,94 +155,13 @@ with app_tab:
                 st.info(""" 1. Due to the screen size limitations all images are scaled to 64px for consistency.
                             2. The input test scan that has a 3d structure is converted to a 2d image by computing the standard deviation for plotting.
                         """)
-                #st.image(labels)
-            # st.image(preds)
-            # st.info(str(preds.shape))
-            # st.info(str(labels.shape))
-            # st.info(str(inputs.shape))
-            #st.info("min and max of inputs: " + str(np.min(inputs)) + " " + str(np.max(inputs)))
-            #st.info("min and max of preds: " + str(np.min(preds)) + " " + str(np.max(preds)))
-            #st.info("min and max of labels: " + str(np.min(labels)) + " " + str(np.max(labels)))
-            #from collections import Counter
-            #st.info("Counter of preds: " + str(Counter(preds.flatten())))
-            #st.info("Counter of labels: " + str(Counter(labels.flatten())))
-            # st.info(str(inputs))
-            #st.info(str(preds))
-            #st.info(str(labels))
-            
-           
-#     # Separator
-#     st.divider()
-#     st.markdown(
-#         """
-#         #### Waveform defect prediction and interpretation using explainable-AI.
-#         """
-#     )
 
-#     model_name = st.text_input('Selected Model Name',key='model name selection', value='model')
-#     model_path = st.text_input('Selected Model Path',key='model path selection', value='./box/models/scan_anomaly/')
-#     col21, col22, col23 = st.columns(3)
-
-#     with col21:
-#         st.info("Inspector's Input")
-#         x_coord = st.number_input("x coordinate", min_value=0, max_value=128, step=1, value=10)
-#     with col22:
-#         st.info("Enter Y coordinate")
-#         y_coord = st.number_input('y coordinate', min_value=0, max_value=128, step=1, value=10)
-#     #sample = [{'x_coord':10, 'y_coord':10}]
-#     sample = [{'x_coord':x_coord, 'y_coord':y_coord}]
-    
-#     if st.button('Analyze waveform', key='analysis'):
-#         URL = 'http://scan_anomaly:5003/predict'
-#         DATA = {'model_name': model_name, 
-#                 'model_path':model_path,
-#                 'n_channels': n_channels, 
-#                 'img_dim': img_dim, 
-#                 'test_scan' : test_scan, 
-#                 'x_coord':x_coord , 
-#                 'y_coord' : y_coord ,
-#                 'num_class':2}
-#         INFERENCE_RESPONSE = requests.post(url = URL, json = DATA)
-#         #print(INFERENCE_RESPONSE.json())
-#         st.info(INFERENCE_RESPONSE.text)
-#         ####################uncomment
-#         import ast
-#         st.info(type(INFERENCE_RESPONSE.json().get('wavetoplot')))
-#         data = ast.literal_eval(INFERENCE_RESPONSE.json().get('wavetoplot'))
-#         feature_importance = ast.literal_eval(INFERENCE_RESPONSE.json().get('feature_importance'))
-#         data, feature_importance, time = np.array(data).reshape(-1,1), np.array(feature_importance).reshape(-1,1), np.arange(len(data)).reshape(-1,1)
-#         dataImpDF = pd.DataFrame(np.hstack((data, feature_importance, time)), columns = ['Amplitude', 'Feature Importance', 'Time'])
-        
-#         st.line_chart(dataImpDF, 
-#                       y = 'Amplitude',
-#                       x = 'Time')
-#         st.bar_chart(dataImpDF, 
-#                      y = 'Feature Importance',
-#                      x = 'Time')
-#         with st.expander('More info on feature importance'):
-#             st.info("""
-#                     ###### Feature Importance
-#                     Here we use LIME (local agnostic model explanation) to explain the model's prediction for a given input (i.e., the raw waveform).
-#                     """)
-#        ################## 
-#         # print(INFERENCE_RESPONSE)
-#         # st.info(INFERENCE_RESPONSE)
-#         # st.info(INFERENCE_RESPONSE.text)
-#         # if len(INFERENCE_RESPONSE.text) < 40:       
-#         #     st.error("Inference Failed")
-#         #     st.info(INFERENCE_RESPONSE.text)
-#         # else:
-#         #     print(INFERENCE_RESPONSE)#.json().get('wavetoplot')
-#         #     #st.success(str(INFERENCE_RESPONSE.json().get('results')))
-#         #     #st.line_chart()
-    
-# with help_tab:
-#     st.markdown("#### Importance of Waveform Probing")
-#     st.markdown(        """
-#         #### Why is it important to analyze the waveform of each pixel in a 3D scan?
-#         #####  The waveform of each pixel in a 3D scan has immense information about the defect or a normal signal. 
-#         ##### Therefore, we first train an random forest model and pick the optimal configuration using grid search.
-#         ##### Next, we use explainable-AI such as LIME to interpret the model's prediction for a given input (i.e., the raw waveform).
-#         ##### This helps us understand what parts of the waveform were given most importance for the prediction.
-#         ##### To interpret this plot, .
-#     """)
+with help_tab:
+    st.markdown("#### Importance of Waveform Probing")
+    st.markdown(        """
+        #### This is the start of inspection where a model predicts on a scan-level if there is a defect or not.
+        ##### The model takes input as a 3D scan. 
+        ##### Each pixel is a waveform of n points defined by the user.
+        ##### Thanks to UNet's adaptable architecture, by adjusting the layers according to the input size, we can use the same model architecture for different input sizes.
+        ##### However, it is important to note that the smaller the input, smaller will be the model. 
+    """)

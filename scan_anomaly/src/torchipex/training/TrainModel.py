@@ -7,11 +7,7 @@ import torch
 import logging
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-#import intel_extension_for_pytorch as ipex
-# from ipex.training.MvtecAdDataset import MvtecAdDataset
-# from ipex.utils.base_model import AbstractModelInference, AbstractModelTraining
-# from ipex.utils.utils import data_augmentation, plot_confusion_matrix, get_bbox_from_heatmap
-#from torchipex.utils.data import DataLoader
+import intel_extension_for_pytorch as ipex
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import balanced_accuracy_score, f1_score
 #import simulatedDataset
@@ -129,12 +125,13 @@ class TrainModel():
         #criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
         criterion = torch.nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        # try:
-        #     model, optimizer = ipex.optimize(model=self.model, optimizer=optimizer, dtype=torch.float32)
-        # except Exception as e:
-        #     print("IPEX error : Ignoring IPEX optimization")
-        #     model = self.model
+        
+        try:
+            self.model, optimizer = ipex.optimize(model=self.model, optimizer=optimizer, dtype=torch.float32)
+        except Exception as e:
+            print("IPEX error : Ignoring IPEX optimization")
         #     optimizer = optimizer
+        
         self.model.train()
         for epoch in range(1, n_epochs + 1):
             print(f"Epoch {epoch}/{n_epochs}:", end=" ")
@@ -234,7 +231,7 @@ class TrainModel():
 
         # Concatenate the dataframes to create a single dataframe
         evaluation_df = pd.concat([df_train, df_val, df_test])
-
+        evaluation_df.fillna(0, inplace=True)
         return evaluation_df
 
     def load_single_scan(self, 
