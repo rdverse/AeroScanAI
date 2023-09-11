@@ -18,7 +18,7 @@ with app_tab:
     # Header image
     col11, col22 = st.columns(2)
     with col11:
-        image = Image.open('./assets/fuselage.jpg')
+        image = Image.open('./assets/space.jpg')
         st.image(image)
         st.markdown("""
                     ###### 3D-UNet model with adaptive input training and active learning.
@@ -145,7 +145,7 @@ with app_tab:
             #st.info("Ground Truth")
             figL = px.imshow(labels, color_continuous_scale="gray")
             figL.update_layout(
-                title="Ground truth the scan (white pixels are defects))",
+                title="Ground truth of scan (white pixels are defects)",
                 xaxis_title="X Coordinate",
                 yaxis_title="Y Coordinate",
             )
