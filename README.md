@@ -8,6 +8,8 @@ This prototype aims to reduce the congnitive burden on the inspectors by leverag
  
 Specifically, AeroScan.AI is a multi-phase solution that fuses models from different modalities including 3d-scans, time-series waveform, and tabular data to form an effecient for industrial aircraft inspection. The protoype is an user in-the-loop system and also provides feasability to readily scale to any application that deals with large 3D-data for defect inspection.
 
+![plot](./docs/overview.jpg)
+
 
 # Steps to run 
 
