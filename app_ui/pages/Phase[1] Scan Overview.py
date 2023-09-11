@@ -51,7 +51,13 @@ with app_tab:
         n_samples = st.slider('Number of Samples',min_value=100, max_value=10000, value=100, step=100)
         img_dim = st.selectbox('Image Dimension', [16,32,64,128], placeholder="64")
         percent_test = st.slider('Percentage of Data Saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
-        #with st.expander("More info on data"):
+        with st.expander("More Info on Active Learning"):
+            st.info("""
+                    ###### Here we implement a simple active learning approach to train the model without labels.
+                    ###### The user sets a prediction threshold and the ground truth then becomes the points where the prediction probability are greater than threshold.
+                    ###### After iteratively training the model, the user may be able to train the model to identify defects without any labelled data.
+                    ###### Alternatively, if the Active Learning knob is turned off, the model trains like a traditional supervised learning model.
+                    """)
     
     # Button to train the model
     if st.button('Train Model', key='training'):

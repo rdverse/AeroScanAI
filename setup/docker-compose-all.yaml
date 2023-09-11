@@ -62,5 +62,5 @@ services:
       resources:
         limits:
           cpus: '2' # Limit to half a CPU core
-          memory: 1024M # Limit to 256 megabytes of memory
+          memory: 2048M # Limit to 256 megabytes of memory
     restart: on-failure
