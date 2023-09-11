@@ -10,13 +10,10 @@ from torch.utils.data import Dataset
 import intel_extension_for_pytorch as ipex
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import balanced_accuracy_score, f1_score
-#import simulatedDataset
-#import torch.nn as nn
+
 from torchipex.training.SimulatedDataset import SimulatedDataset
 from torchipex.unet.unet_model import UNet
-# return none
-# def simulatedDataset():
-#     return None 
+
 import os
 import pandas as pd
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
@@ -47,8 +44,7 @@ class TrainModel():
         self.active_learning = active_learning
         self.al_threshold = al_threshold
     
-    # def load_model(self, n_channels, n_classes, img_dim):
-    #     model = UNet(n_channels=n_channels, n_classes=n_classes, img_dim =img_dim)
+
     def load_model(self, n_channels, n_classes, img_dim):
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -68,7 +64,6 @@ class TrainModel():
             self.load_model(n_channels=self.n_channels,
                             n_classes=self.n_classes,
                             img_dim = self.img_dim)
-        #self.model.eval()
         
     def load_data(self, 
                   n_samples, 
@@ -138,24 +133,12 @@ class TrainModel():
             running_loss = 0
             running_corrects = 0
             n_samples = 0
-            # for inputs1, labels1 in self.train_loader:
-            #     inputs, labels = inputs1, labels1
-            #     if data_aug:
-            #         print("Applying DataAugmentation----> Flipping/Rotation/"
-            #         "Enhancing/Cropping and keeping the Regular images as well")
-            #         inputs, labels = data_augmentation(inputs1, labels1)
-            #     inputs = inputs.to(self.device)
-            #     labels = labels.to(self.device)
-            # batch iteration
+
             for batch in self.train_loader:
                 inputs = batch['data']
                 labels = batch['mask']
                 # change input shape to (batch_size, n_channels, img_dim, img_dim)
                 inputs = torch.swapaxes(inputs, 1, 3)
-                
-                #print("Inputs shape is : ", inputs.shape)
-                #print("Mask shape is : ", labels.shape)
-                    
                 
                 optimizer.zero_grad()
                 masks = self.model(inputs).squeeze()
@@ -168,10 +151,7 @@ class TrainModel():
                 loss = criterion(masks, labels)
                 loss.backward()
                 optimizer.step()
-                #print(masks)
-                #print("predictions sum is : ", torch.sum(masks))
-                #print("predictions std is : ", torch.std(masks))
-                #print("predictions mean is : ", torch.mean(masks))
+
                 # loss can take unthresholded masks
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum((masks>threshold) == labels)
@@ -197,10 +177,7 @@ class TrainModel():
         train_preds, train_labels,_ = self.predict(self.train_loader)
         train_preds = train_preds.reshape(-1)
         train_labels = train_labels.reshape(-1)
-        #print("train_preds shape is : ", train_preds.shape)
-        #print("train_labels shape is : ", train_labels.shape)
-        #print(train_preds)
-        #print(train_labels)
+
         metrics_train["Precision"] = precision_score(train_preds, train_labels, zero_division=0)
         metrics_train["Recall"] = recall_score(train_preds, train_labels, zero_division=0)
         metrics_train["Accuracy"] = accuracy_score(train_preds, train_labels )
