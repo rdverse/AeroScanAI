@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 
 class PredictionPayload(BaseModel):
+    # active learning does not apply here, only active inference
+    al_threshold: float = 0.5
     model_name : str
     model_path: str
     img_dim : int
@@ -10,6 +12,8 @@ class PredictionPayload(BaseModel):
     num_class: int = 1 
     
 class TrainPayload(BaseModel):
+    active_learning: bool = False
+    al_threshold: float = 0.5
     img_dim: int
     n_channels: int
     n_classes: int = 1
@@ -21,4 +25,3 @@ class TrainPayload(BaseModel):
     batch_size: int = 32
     percent_test: float = 0.2
     
-

@@ -5,18 +5,20 @@ import ast
 import pandas as pd
 import numpy as np
 import plotly.express as px
-# Set the title of the app
+import matplotlib.pyplot as plt
+from skimage.transform import resize
+
+#Set the title of the app
 st.title('Scan Anomaly Detection')
 
 # Create two tabs: "Application" and "Help"
 app_tab, help_tab = st.tabs(["Application", "Help"])
-
 # "Application" tab
 with app_tab:
     # Header image
     col11, col22 = st.columns(2)
     with col11:
-        image = Image.open('./assets/waveform2.png')
+        image = Image.open('./assets/fuselage.jpg')
         st.image(image)
         st.markdown("""
                     ###### 3D-UNet model with adaptive input training
@@ -31,9 +33,10 @@ with app_tab:
     
     with cola1:
         st.info("Model Parameters")
-        
         model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
         model_path = st.text_input('Model Save Path', key='model path', value='./box/models/scan_anomaly/')
+        active_learning = st.selectbox('Active Learning', ["True", "False"], placeholder="False")
+        al_threshold = st.slider('Active learning prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)
         #test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
         st.info("Training Parameters")
         n_cpus = st.slider('Number of CPUs',min_value=1, max_value=128, value=1, step=1)
@@ -48,13 +51,15 @@ with app_tab:
         img_dim = st.selectbox('Image Dimension', [16,32,64,128,256,512], placeholder="64")
         percent_test = st.slider('Percentage of data saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
         #with st.expander("More info on data"):
-            
+    
     # Button to train the model
     if st.button('Train Model', key='training'):
         # Build the request
         URL = 'http://scan_anomaly:5003/train'
     
-        DATA = { 'img_dim':img_dim, 
+        DATA = {'active_learning':active_learning,
+                'al_threshold':al_threshold,  
+                'img_dim':img_dim, 
                 'n_channels':n_channels,
                 'n_classes':n_classes,
                 'n_samples':n_samples,
@@ -65,7 +70,6 @@ with app_tab:
                 'batch_size': batch_size,
                 'percent_test': percent_test
                 }
-
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
         
         st.divider()
@@ -86,11 +90,12 @@ with app_tab:
         """
         #### Visualize the defects on a test scan
         """    )     
-        
+    al_threshold = st.slider('Active inference prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)    
     test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
     if st.button('Visualize', key='predict_visualize'):
         URL = 'http://scan_anomaly:5003/predict'
-        DATA = {'model_name': model_name, 
+        DATA = {'al_threshold':al_threshold, 
+                'model_name': model_name, 
                 'model_path':model_path,
                 'n_channels': n_channels, 
                 'img_dim': img_dim, 
@@ -111,59 +116,60 @@ with app_tab:
             labels = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('labels'))).squeeze()*255
             inputs = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('inputs'))).squeeze()
             colb1, colb2, colb3 = st.columns(3)
-            with colb1:
-                st.info("Input")
-                st.image(inputs)
-            with colb2:
-                st.info("Prediction")
-                st.image(preds)
-            with colb3:
-                st.info("Ground Truth")
-                st.image(labels)
-                
+            preds, labels, inputs = resize(preds, (64,64), anti_aliasing=True), resize(labels, (64,64), anti_aliasing=True), resize(inputs, (64,64), anti_aliasing=True)
+    #        with colb1:
+            st.info("Input test scan : {} ".format(test_scan))
+            #st.image(inputs)
+        # Create a Plotly heatmap for image display
+            figI = px.imshow(inputs, color_continuous_scale="viridis")
+            figI.update_layout(
+                title="Test scan under analysis : {} ".format(test_scan),
+                xaxis_title="X Coordinate",
+                yaxis_title="Y Coordinate",
+            )
+            st.plotly_chart(figI)
+    
+    #        with colb2:
+            st.info("Model prediction")
+            figP = px.imshow(preds, color_continuous_scale="gray")
+            figP.update_layout(
+                title="Predicted defects (in white pixels)",
+                xaxis_title="X Coordinate",
+                yaxis_title="Y Coordinate",
+            )
+            st.plotly_chart(figP)
+    #        st.image(preds)
+    
+    #        with colb3:
+            #st.info("Ground Truth")
+            figL = px.imshow(labels, color_continuous_scale="gray")
+            figL.update_layout(
+                title="Ground truth the scan (white pixels are defects))",
+                xaxis_title="X Coordinate",
+                yaxis_title="Y Coordinate",
+            )
+            st.plotly_chart(figL)
+            
+            with st.expander('Note'):
+                st.info(""" 1. Due to the screen size limitations all images are scaled to 64px for consistency.
+                            2. The input test scan that has a 3d structure is converted to a 2d image by computing the standard deviation for plotting.
+                        """)
+                #st.image(labels)
             # st.image(preds)
             # st.info(str(preds.shape))
             # st.info(str(labels.shape))
             # st.info(str(inputs.shape))
             #st.info("min and max of inputs: " + str(np.min(inputs)) + " " + str(np.max(inputs)))
-            st.info("min and max of preds: " + str(np.min(preds)) + " " + str(np.max(preds)))
-            st.info("min and max of labels: " + str(np.min(labels)) + " " + str(np.max(labels)))
-            from collections import Counter
-            st.info("Counter of preds: " + str(Counter(preds.flatten())))
-            st.info("Counter of labels: " + str(Counter(labels.flatten())))
+            #st.info("min and max of preds: " + str(np.min(preds)) + " " + str(np.max(preds)))
+            #st.info("min and max of labels: " + str(np.min(labels)) + " " + str(np.max(labels)))
+            #from collections import Counter
+            #st.info("Counter of preds: " + str(Counter(preds.flatten())))
+            #st.info("Counter of labels: " + str(Counter(labels.flatten())))
             # st.info(str(inputs))
-            st.info(str(preds))
-            st.info(str(labels))
+            #st.info(str(preds))
+            #st.info(str(labels))
             
-                    # Sample image data
-            image = np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8)
-            import matplotlib.pyplot as plt
-            # Create a Matplotlib figure
-            fig, ax = plt.subplots()
-            ax.imshow(image)
-            ax.set_xticks(np.arange(0, len(image[0]), 10))
-            ax.set_yticks(np.arange(0, len(image), 10))
-            ax.grid(which='both', color='white', linewidth=1)
-
-            st.pyplot(fig)
-            
-            
-            image = np.random.randint(0, 256, (256, 256), dtype=np.uint8)
-            
-            # Create a Plotly heatmap for image display
-            fig = px.imshow(image, color_continuous_scale="gray")
-            fig.update_layout(
-                title="Hover over the heatmap",
-                xaxis_title="X Coordinate",
-                yaxis_title="Y Coordinate",
-            )
-
-            # Display the Plotly figure
-            st.plotly_chart(fig)
-                # st.image(labels)
-            # st.image(inputs)
-            #st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
-            
+           
 #     # Separator
 #     st.divider()
 #     st.markdown(

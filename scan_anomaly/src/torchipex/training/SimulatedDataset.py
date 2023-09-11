@@ -40,6 +40,7 @@ class SimulatedDataset(Dataset):
     def synthetic_defects(self, current_seed):
         np.random.seed(current_seed)
         def random_sine_wave(length, defect=True):
+            np.random.seed(current_seed)
             # Generate a random amplitude
             amplitude = random.uniform(0.1, 1.0)
             # Generate a random frequency
@@ -65,7 +66,7 @@ class SimulatedDataset(Dataset):
                     
             sine_wave += noise
             return sine_wave
-
+        np.random.seed(current_seed)
         data = np.zeros((self.img_dim, self.img_dim, self.n_channels))
         mask = np.zeros((self.img_dim, self.img_dim))
         pixelmap = np.zeros((self.img_dim, self.img_dim, 2)) # 2 for x and y
