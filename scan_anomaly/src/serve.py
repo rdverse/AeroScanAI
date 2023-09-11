@@ -8,14 +8,12 @@ import numpy as np
 from fastapi import FastAPI
 from model import TrainPayload, PredictionPayload
 from torchipex.training.TrainModel import TrainModel
-# import unet model and its parts
 from torchipex.unet.unet_model import UNet#, DoubleConv, Down, Up, OutConv, FullyConected, GlobalAvgPool
 from sklearn.preprocessing import MinMaxScaler
 app = FastAPI()
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-#from unet import UNet
-#warnings.filterwarnings("ignore")
+
 @app.get("/ping")
 async def ping():
     """Ping server to determine status
@@ -41,19 +39,14 @@ async def train(payload:TrainPayload):
     API response
         Accuracy metrics and other logger feedback on training progress.
     """
-    # test one - being able to load the model properly
     unetModel = TrainModel() 
     unetModel.load_model(n_channels=payload.n_channels, 
                                  n_classes=payload.n_classes, 
                                  img_dim = payload.img_dim)
-    #print(unetModel.model)
-    #print(unetModel.__dict__)
-    # test two - being able to load the data properly
     unetModel.load_data(n_samples=payload.n_samples,
                         percent_test=payload.percent_test,
                         batch_size=payload.batch_size,
                         num_workers=payload.n_cpus) 
-    # test 3 run some supervised training
     unetModel.train(n_epochs=payload.n_epochs) 
     
     unetModel.save_model(model_name= payload.model_name,model_path=payload.model_path)
@@ -67,7 +60,19 @@ async def train(payload:TrainPayload):
 
 @app.post("/predict")
 async def predict(payload:PredictionPayload):
-    #sample = pd.json_normalize(payload.data) 
+    """Prediction Endpoint
+    This endpoint uses a trained model to make predictions on test data.
+
+    Parameters
+    ----------
+    payload : PredictionPayload
+        Prediction endpoint payload model
+
+    Returns
+    -------
+    dict
+        Predicted values, labels, and input data.
+    """
     unetModel = TrainModel() 
     unetModel.load_model(n_channels=payload.n_channels, 
                                  n_classes=payload.n_classes, 
@@ -92,9 +97,5 @@ async def predict(payload:PredictionPayload):
                      "inputs": inputs}
     return return_dict
     
-    #unetModel.predict(test_scan_data)
-    #unetModel.load_model(n_channels=payload.n_channels,
- 
-#add implementation for retraining the model 
 if __name__ == "__main__":
     uvicorn.run("serve:app", host="0.0.0.0", port=5003, log_level="info")
