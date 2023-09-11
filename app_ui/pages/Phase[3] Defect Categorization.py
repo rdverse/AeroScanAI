@@ -13,7 +13,7 @@ app_tab, help_tab = st.tabs(["Application", "Help"])
 
 with app_tab:
     ####################PART-1 MODEL TRAINING #################################
-    "st.session_state object:" , st.session_state
+    # "st.session_state object:" , st.session_state
     # Header image
     col11, col22 = st.columns(2)
     with col11:
@@ -44,12 +44,12 @@ with app_tab:
     with cola1:
         test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
         train_scan = st.selectbox('Train Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="high_defect_scan")
-        append_path = st.text_input('Training Append Data File Path (If you appended new data below)', key='data', value='') 
+        append_path = st.text_input('Training Append Data File Path (If you appended new data below)', key='data', value='./box/datasets/defect_classify/data_train.csv') 
         model_path = st.text_input('Model Save Path', key='model path', value='./box/models/defect_classify/')
         
     with cola2:    
-        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=512, value=10, step=1)
-        img_dim = st.selectbox('Image Dimension', [8,16,32,"64",128,256,512], placeholder="64")
+        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=128, value=10, step=1)
+        img_dim = st.selectbox('Image Dimension', [8,16,32,64,128,256,512], placeholder="64")
         model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
         with st.expander("More info on data"):
             st.info("""
@@ -76,34 +76,21 @@ with app_tab:
         
         print(DATA)
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
-        print(TRAINING_RESPONSE)
-        st.info(TRAINING_RESPONSE)
+        #print(TRAINING_RESPONSE)
+        #st.info(TRAINING_RESPONSE)
         # Check the response status code
         if len(TRAINING_RESPONSE.text) < 40:       
             st.error("Model Training Failed")
             st.info(TRAINING_RESPONSE.text)
         else:
             st.success('Training was Succesful')
-            st.info(TRAINING_RESPONSE.text)
+         #   st.info(TRAINING_RESPONSE.text)
+            st.info("Model trained on {} datapoints".format(str(TRAINING_RESPONSE.json().get('xtrain_len'))) )
             st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
 
     ####################PART-2 : Partial dependence visualization##############################
-    # Separator
+    
     st.divider()
-    def update_slider():
-        st.session_state.slider = st.session_state.numeric
-    def update_numin():
-        st.session_state.numeric = st.session_state.slider            
-
-    val = st.number_input('Input', value = 0, key = 'numeric', on_change = update_slider)
-
-
-    slider_value = st.slider('slider', min_value = 0, 
-                            value = val, 
-                            max_value = 5,
-                            step = 1,
-                            key = 'slider' )
-
     st.markdown(
         """
         #### Partial dependence analysis of a feature on outcome.
@@ -114,8 +101,6 @@ with app_tab:
     fetched_data = None 
     
     def update_data(data):
-        #st.info("fetched_data : {}".format(data))
-        #print("fetched_data : {}".format(data))
         dfcols = {"qc1": "Quality Check-1", "qc2": "Quality Check-2", "qc3": "Quality Check-3", "qc4": "Quality Check-4", "min": "Minimum Value", "max": "Maximum Value", "mean": "Mean", "std": "Standard Deviation", "snr": "Signal-to-Noise Ratio", "num_peaks": "Number of Peaks"}
         df = pd.DataFrame(data)
         df.rename(columns=dfcols, inplace=True) 
@@ -124,6 +109,7 @@ with app_tab:
         df.columns = ["Feature", "Value"]
        # df.columns = ["Feature", "Value"]
        # st.table(df)
+        df = df.round(3).astype(object)
         df.style.background_gradient(axis=None, vmin=1, vmax=5, cmap="YlGnBu")
         cell_hover = {  # for row hover use <tr> instead of <td>
         'selector': 'td:hover',
@@ -166,7 +152,6 @@ with app_tab:
             DATA = {'img_dim': img_dim, 'n_channels': n_channels, 'test_scan': test_scan, 'x_coord':x_coord, 'y_coord':y_coord}
             DATA_RESPONSE = requests.post(url = URL, json = DATA)
            
-            
             #st.info(DATA_RESPONSE.text)
             if DATA_RESPONSE.text != None:
                 data = json.loads(DATA_RESPONSE.text)["fetched_data"]#[0]
@@ -204,14 +189,12 @@ with app_tab:
         URL = 'http://defect_classify:5001/predict'
         DATA = {'data':sample, 'model_path':model_path, 'model_name':model_name, 'num_class':3, 'scaler': True}
         INFERENCE_RESPONSE = requests.post(url = URL, json = DATA)
-        st.info(INFERENCE_RESPONSE)
-        st.info(INFERENCE_RESPONSE.text)
         if len(INFERENCE_RESPONSE.text) < 40:       
             st.error("Model Training Failed")
             st.info(INFERENCE_RESPONSE.text)
         else:
             st.success(str(INFERENCE_RESPONSE.json().get('Defect Result')))
-    
+
     data_path ="./box/datasets/defect_classify/train.csv"
     #For appending data    
     st.markdown("""
@@ -220,18 +203,22 @@ with app_tab:
     DEFECT_TYPES = {0:'No Defect', 1:'Type-1 Defect', 2:'Type-2 Defect'}
     target = st.selectbox('Select defect category before append', [0,1,2], format_func=lambda x: DEFECT_TYPES[x])
     #sample_append = [{'qc1':backwall, 'frontwall':frontwall, 'ramp':ramp, 'geometry':geometry, 'no_peaks':no_peaks, 'noise':noise, 'max':max, 'min':min, 'signal_noise_ratio':signal_noise_ratio, "defect": target}]
-    sample_append = [{'qc1':qc1, 'qc2':qc2, 'qc3':qc3, 'qc4':qc4, 'min':min, 'max':max, 'mean':mean, 'snr':snr, 'num_peaks':num_peaks, 'defect':target}]
-    if st.button('Append data', key='append'):
+    sample_append = [{'qc1':qc1, 'qc2':qc2, 'qc3':qc3, 'qc4':qc4, 'min':min, 'max':max, 'mean':mean, 'std':std,'snr':snr, 'num_peaks':num_peaks, 'defect':target}]
+    #sample_append = [qc1, qc2, qc3, qc4, min, max, mean, snr, num_peaks, target]
+    
+    if st.button('Append data', key='appending'):
         URL = 'http://defect_classify:5001/append_data'
-        DATA = {'data_path':data_path, 'data':sample_append}
+        DATA = {'data_path':append_path, 'data': sample_append}
+        
         DATAAPPEND_RESPONSE = requests.post(url = URL, json = DATA)
         st.info("Appending new data point")
-        st.info(DATAAPPEND_RESPONSE.text)
+        
         if len(DATAAPPEND_RESPONSE.text) < 40:       
-            st.error("Model Training Failed")
+            st.error("Data appending failed")
             st.info(DATAAPPEND_RESPONSE.text)
         else:
-            st.success(str(DATAAPPEND_RESPONSE.json()))#.get('Maintenance Recommendation')))
+            st.success("Data appended successfully")
+            st.info(DATAAPPEND_RESPONSE.json().get('msg'))
 # Help tab frontend below
 ############################### HELP TAB#################################
 with help_tab:
