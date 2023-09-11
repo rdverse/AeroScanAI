@@ -115,25 +115,6 @@ class UNet(nn.Module):
         return logits
  
 
-# for saving model in the main function
-# def save_checkpoint(state, filename='checkpoint.pth.tar'):
-#     torch.save(state, filename)
-
-# def train(net, dataloader, criterion, optimizer, device, num_epochs):
-#     net.train()
-#     net.to(device)
-#     for epoch in range(num_epochs):
-#         for batch in dataloader:
-#             # Your training code here
-#         # Save checkpoint at the end of the epoch
-#         save_checkpoint({
-#             'epoch': epoch + 1,
-#             'model_state_dict': net.state_dict(),
-#             'optimizer_state_dict': optimizer.state_dict(),
-#             'loss': loss,
-#             # Add any other necessary state
-#         })
-
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
