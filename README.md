@@ -23,11 +23,11 @@ sudo apt-get update && sudo apt-get install make
 ```
 
 ```
-3. git clone https://github.com/rdverse/rdverseHACK.git
+3. git clone https://github.com/rdverse/AeroScanAI.git
 ```
 
 ```
-4. cd rdverseHACK/setup
+4. cd AeroScanAI/setup
 ```
 
 ```
