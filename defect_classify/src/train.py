@@ -60,15 +60,10 @@ class DefectClassify():
                 print(append_datapoint.columns)
                 append_label = append_datapoint['defect']
                 append_datapoint.drop(columns = ['defect'], inplace=True)
-                #print(append_path)
-                #print(append_datapoint)
-                #print(append_label)
+
             except FileNotFoundError:
                 print("Append file not found")
-                #sys.exit(f'Data loading error, file not found at {file}')
-        #print(append_path)
-        #print(append_datapoint)
-        #print(append_label)
+
         # TRAINING DATA
         X_train, self.y_train, pixelmap_train, columns = synthetic_defects(img_dim, n_channels, train_scan)
         X_test, self.y_test, pixelmap_test, columns = synthetic_defects(img_dim, n_channels, test_scan)
@@ -78,10 +73,7 @@ class DefectClassify():
             # concatenate train and new data
             X_train = pd.concat([append_datapoint, X_train], ignore_index=True)
             self.y_train = pd.concat([append_label, self.y_train], ignore_index=True)            
-        #print(X_train)
-        #print(self.y_train)
-        #print(X_test)
-        #print(self.y_test)
+
         print("22columns of x_train and x_test are ", X_train.columns, X_test.columns)
 
         df_num_train = X_train.select_dtypes(['float', 'int', 'int32'])
@@ -153,9 +145,7 @@ class DefectClassify():
 
         print('=====> XGBoost Daal accuracy score %f', self.d4p_acc)
         print('DONE')
-        #print(f"model predictions are {daal_prediction.prediction}")
-        print(self.y_test)
-        print(self.y_train)
+
         return self.d4p_acc
     
     def save(self, model_path, model_name):
