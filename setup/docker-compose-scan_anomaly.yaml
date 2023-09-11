@@ -3,6 +3,7 @@ services:
   scan_anomaly:
     build:
       context: ../scan_anomaly/
+      shm_size: '4gb'
       dockerfile: Dockerfile
     ports:
       - 5003:5003
@@ -12,7 +13,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '8' # Limit to half a CPU core
+          cpus: '16' # Limit to half a CPU core
           memory: 4096M # Limit to 256 megabytes of memory
     restart: on-failure
     
@@ -28,6 +29,6 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5' # Limit to half a CPU core
-          memory: 512M # Limit to 256 megabytes of memory
+          cpus: '2' # Limit to half a CPU core
+          memory: 2048M # Limit to 256 megabytes of memory
     restart: on-failure

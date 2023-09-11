@@ -2,7 +2,6 @@ import uvicorn
 from fastapi import FastAPI
 import logging
 import warnings
-from predict import WaveInference
 import pandas as pd
 import inspect
 import numpy as np
