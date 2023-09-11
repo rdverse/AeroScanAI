@@ -1,0 +1,66 @@
+version: '3'
+services:
+  defect_classify:
+    build:
+      context: ../defect_classify/
+      dockerfile: Dockerfile
+    ports:
+      - 5001:5001
+    volumes:
+      - ../box:/defect_classify/box
+      - ../defect_classify:/defect_classify
+    deploy:
+      resources:
+        limits:
+          cpus: '2' # Limit to half a CPU core
+          memory: 1024M # Limit to 256 megabytes of memory
+    restart: on-failure
+
+  waveform_probe:
+    build:
+      context: ../waveform_probe/
+      dockerfile: Dockerfile
+    ports:
+      - 5002:5002
+    volumes:
+      - ../box:/waveform_probe/box
+      - ../waveform_probe:/waveform_probe
+    deploy:
+      resources:
+        limits:
+          cpus: '2' # Limit to half a CPU core
+          memory: 1024M # Limit to 256 megabytes of memory
+    restart: on-failure
+
+  scan_anomaly:
+    build:
+      context: ../scan_anomaly/
+      dockerfile: Dockerfile
+      #shm_size: '2gb' # enable this only in large VM when running training on large scans
+    ports:
+      - 5003:5003
+    volumes:
+      - ../box:/scan_anomaly/box
+      - ../scan_anomaly:/scan_anomaly
+    deploy:
+      resources:
+        limits:
+          cpus: '16' # Limit to half a CPU core
+          memory: 4096M # Limit to 256 megabytes of memory
+    restart: on-failure
+
+  app_ui:
+    build:
+      context: ../app_ui/
+      dockerfile: Dockerfile
+    ports:
+      - 5005:5005
+    volumes:
+      - ../box:/app_ui/box
+      - ../app_ui:/app_ui
+    deploy:
+      resources:
+        limits:
+          cpus: '2' # Limit to half a CPU core
+          memory: 1024M # Limit to 256 megabytes of memory
+    restart: on-failure
