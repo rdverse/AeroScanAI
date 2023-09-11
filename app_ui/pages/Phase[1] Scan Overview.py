@@ -37,7 +37,7 @@ with app_tab:
         model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
         model_path = st.text_input('Model Save Path', key='model path', value='./box/models/scan_anomaly/')
         active_learning = st.selectbox('Active Learning', ["True", "False"], placeholder="False")
-        al_threshold = st.slider('Active learning prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)
+        al_threshold = st.slider('Active Learning Prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)
         #test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
         st.info("Training Parameters")
         n_cpus = st.slider('Number of CPUs',min_value=1, max_value=128, value=1, step=1)
@@ -46,11 +46,11 @@ with app_tab:
 
     with cola2:    
         st.info("Data Parameters")
-        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=124, value=10, step=1)
-        n_classes = st.selectbox('Number of classes', [1], placeholder="1")
-        n_samples = st.slider('Number of samples',min_value=100, max_value=10000, value=100, step=100)
+        n_channels = st.slider('Number of Channels in Waveform',min_value=1, max_value=124, value=10, step=1)
+        n_classes = st.selectbox('Number of Classes', [1], placeholder="1")
+        n_samples = st.slider('Number of Samples',min_value=100, max_value=10000, value=100, step=100)
         img_dim = st.selectbox('Image Dimension', [16,32,64,128], placeholder="64")
-        percent_test = st.slider('Percentage of data saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
+        percent_test = st.slider('Percentage of Data Saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
         #with st.expander("More info on data"):
     
     # Button to train the model
@@ -91,7 +91,7 @@ with app_tab:
         """
         #### Visualize the defects on a test scan
         """    )     
-    al_threshold = st.slider('Active inference prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)    
+    al_threshold = st.slider('Active Inference Prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)    
     test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
     if st.button('Visualize', key='predict_visualize'):
         URL = 'http://scan_anomaly:5003/predict'
@@ -124,7 +124,7 @@ with app_tab:
         # Create a Plotly heatmap for image display
             figI = px.imshow(inputs, color_continuous_scale="viridis")
             figI.update_layout(
-                title="Test scan under analysis : {} ".format(test_scan),
+                title="Test Scan Under Analysis : {} ".format(test_scan),
                 xaxis_title="X Coordinate",
                 yaxis_title="Y Coordinate",
             )
@@ -134,7 +134,7 @@ with app_tab:
             st.info("Model prediction")
             figP = px.imshow(preds, color_continuous_scale="gray")
             figP.update_layout(
-                title="Predicted defects (in white pixels)",
+                title="Predicted Defects (in white pixels)",
                 xaxis_title="X Coordinate",
                 yaxis_title="Y Coordinate",
             )
@@ -145,7 +145,7 @@ with app_tab:
             #st.info("Ground Truth")
             figL = px.imshow(labels, color_continuous_scale="gray")
             figL.update_layout(
-                title="Ground truth of scan (white pixels are defects)",
+                title="Ground Truth of the Scan (white pixels are defects)",
                 xaxis_title="X Coordinate",
                 yaxis_title="Y Coordinate",
             )
