@@ -106,6 +106,17 @@ launch-defect_classify_and_waveform_probe_and_scan_anomaly_no_data:
 shutdown-defect_classify_and_waveform_probe_and_scan_anomaly:
 	docker-compose -f docker-compose-dc-wp-sa.yaml -p dc down
 
+############ DEFECT CLASSIFY AND WAVEFORM PROBE AND SCAN ANOMALY#################
+launch-all: setup-box-defect_classify setup-box-waveform_probe setup-box-scan_anomaly
+	docker-compose -f docker-compose-all.yaml -p all up -d
+
+launch-defect_classify_and_waveform_probe_and_scan_anomaly_no_data: 
+	docker-compose -f docker-compose-all.yaml -p all up -d
+
+shutdown-defect_classify_and_waveform_probe_and_scan_anomaly:
+	docker-compose -f docker-compose-all.yaml -p all down
+
+
 #######APP UI#################
 launch-app_ui: 
 	docker-compose -f docker-compose-app_ui.yaml -p aui up

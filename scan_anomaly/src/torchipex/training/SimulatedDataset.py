@@ -5,7 +5,6 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 # IMPORTANT : IF YOU NEED TO MODIFY THE DEFECT GO TO CHECKPOINT101 ( in comments )
 import math
-
 class SimulatedDataset(Dataset):
     def __init__(self, img_dim, 
                  n_channels, 
@@ -40,6 +39,7 @@ class SimulatedDataset(Dataset):
     def synthetic_defects(self, current_seed):
         np.random.seed(current_seed)
         def random_sine_wave(length, defect=True):
+            np.random.seed(current_seed)
             # Generate a random amplitude
             amplitude = random.uniform(0.1, 1.0)
             # Generate a random frequency
@@ -62,10 +62,9 @@ class SimulatedDataset(Dataset):
                         dampen_start = np.random.randint(0, self.n_channels - dampen_width - 1)
                         dampen_end = dampen_start + dampen_width
                         sine_wave[dampen_start:dampen_end] = 0
-                    
             sine_wave += noise
             return sine_wave
-
+        np.random.seed(current_seed)
         data = np.zeros((self.img_dim, self.img_dim, self.n_channels))
         mask = np.zeros((self.img_dim, self.img_dim))
         pixelmap = np.zeros((self.img_dim, self.img_dim, 2)) # 2 for x and y

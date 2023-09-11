@@ -18,8 +18,8 @@ class TrainPayload(BaseModel):
     ncpu: int = 1
     
 class AppendDataPayload(BaseModel): 
-    data_path: str
-    data: list
+    data_path: str = ""
+    data : list
     
 class FetchCoordinatesPayload(BaseModel):
     img_dim : int

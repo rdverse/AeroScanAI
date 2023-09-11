@@ -1,3 +1,4 @@
+import os
 import uvicorn
 from fastapi import FastAPI
 import logging
@@ -13,7 +14,7 @@ app = FastAPI()
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-#warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
 @app.get("/ping")
 async def ping():
@@ -48,9 +49,10 @@ async def train(payload:TrainPayload):
     logger.info("Robotic Maintenance Model Successfully Trained")
     model.save(payload.model_path)
     logger.info("Saved Robotic Maintenance Model")
-    accuracy_score = model.validate()
-    return {"msg" : f"{fi} Model trained succesfully model path is {payload.model_path}\n feature importance : {fi}",
-            "validation scores": accuracy_score}
+    benchmarks = model.validate()
+    print(benchmarks)
+    return {"msg" : f"Model trained succesfully model path is {os.path.join(payload.model_path, payload.model_name)}",
+            "benchmarks": benchmarks}
     
     
 @app.post("/predict")

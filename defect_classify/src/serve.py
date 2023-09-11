@@ -43,41 +43,45 @@ async def train(payload:TrainPayload):
     """
     model = DefectClassify()
     model.process_data(payload.img_dim, payload.n_channels, payload.train_scan, payload.test_scan, payload.append_path)
-    print("Data has been successfully processed")
+    #print("Data has been successfully processed")
     logger.info("Data has been successfully processed")
-    fi = model.train(payload.ncpu)
+    fi, xtrain_len = model.train(payload.ncpu)
     logger.info("XGBoost Model Successfully Trained")
     mp, sp = model.save(payload.model_path, payload.model_name)
     logger.info("Saved XGBoost Model Successfully")
     accuracy_score = model.validate()
-    return {"msg" : f"{mp}   {sp} Model trained succesfully model path is {payload.model_path}\n feature importance : {fi}", "validation scores": accuracy_score}
+    # return {"msg" : f"{mp}   {sp} Model trained succesfully model path is {payload.model_path}",
+    #         "feature_importance" : {fi},
+    #         "validation scores": accuracy_score,
+    #         "xtrain_len" : xtrain_len}
+    return {"validation scores": accuracy_score,
+            "xtrain_len" : xtrain_len}
 
 @app.post("/predict")
 async def predict(payload:PredictionPayload):
-    print("entered predict")
+    #print("entered predict")
     sample = pd.json_normalize(payload.data)
-    print(sample)
+    #print(sample)
     results = inference(model_name = payload.model_name, model_path = payload.model_path, data=sample, num_class = payload.num_class)
     return {"msg": "Completed Analysis", "Defect Result": results}
 
 @app.post("/fetch_coordinates_data")
 async def fetch_data(payload:FetchCoordinatesPayload):
-    print("entered fetch coordinates data")
+    #print("entered fetch coordinates data")
     fetched_data = fetch_coordinates_data(img_dim=payload.img_dim, n_channels=payload.n_channels, test_scan = payload.test_scan, x_coord = payload.x_coord, y_coord = payload.y_coord)
-    print("append_data args")
+    #print("append_data args")
     return {"msg": "Completed fetching coordinates data", "fetched_data is": fetched_data, "fetched_data": fetched_data}
 
 @app.post("/append_data")
-async def new_data_append(payload:FetchCoordinatesPayload):
+async def new_data_append(payload:AppendDataPayload):
     sample = pd.json_normalize(payload.data)
-    print("sample in append data")
-    print(sample)
-    print("append_data args")
-    print(inspect.signature(append_data).parameters)
+    # print("sample in append data")
+    # print(sample)
+    # print("append_data args")
+    # print(inspect.signature(append_data).parameters)
     print(append_data.__dict__)
     results = append_data(data_path = payload.data_path, data = sample)
-    #results = inference(data = sample, model_path = payload.model)
-    return {"msg": "Completed appending data", "length of data now is": results}
+    return {"msg": results}
 
 #add implementation for retraining the model 
 if __name__ == "__main__":

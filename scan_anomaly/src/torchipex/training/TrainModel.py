@@ -7,11 +7,7 @@ import torch
 import logging
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-#import intel_extension_for_pytorch as ipex
-# from ipex.training.MvtecAdDataset import MvtecAdDataset
-# from ipex.utils.base_model import AbstractModelInference, AbstractModelTraining
-# from ipex.utils.utils import data_augmentation, plot_confusion_matrix, get_bbox_from_heatmap
-#from torchipex.utils.data import DataLoader
+import intel_extension_for_pytorch as ipex
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import balanced_accuracy_score, f1_score
 #import simulatedDataset
@@ -25,15 +21,13 @@ import os
 import pandas as pd
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
 
-
 SCAN_DICT = {"low_defect_scan": {"defect_coverage": 0.15, "random_seed": 9}, 
              "medium_defect_scan": {"defect_coverage": 0.5, "random_seed": 9}, 
              "high_defect_scan": {"defect_coverage": 0.8, "random_seed": 9},
              "random": {"defect_coverage": np.random.randn(), "random_seed": int(np.random.uniform(10,1000))}}
-
 class TrainModel(): 
     # add an argument called mode 
-    def __init__(self) -> None:
+    def __init__(self, active_learning=False, al_threshold=0.5) -> None:
         self.train_loader = []
         self.test_loader = []
         self.model = None
@@ -50,6 +44,8 @@ class TrainModel():
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
+        self.active_learning = active_learning
+        self.al_threshold = al_threshold
     
     # def load_model(self, n_channels, n_classes, img_dim):
     #     model = UNet(n_channels=n_channels, n_classes=n_classes, img_dim =img_dim)
@@ -60,11 +56,18 @@ class TrainModel():
         self.model = UNet(n_channels=self.n_channels, 
                           n_classes=self.n_classes, 
                           img_dim = self.img_dim)
+        
     def save_model(self, model_name, model_path):
         torch.save(self.model, os.path.join(model_path,model_name + '.pt'))
         
     def load_model_from_file(self, model_name, model_path):
-        self.model = torch.load(os.path.join(model_path,model_name + '.pt'))
+        if os.path.exists(os.path.join(model_path,model_name + '.pt')):
+            self.model = torch.load(os.path.join(model_path,model_name + '.pt'))
+        else:
+            print("Model does not exist")
+            self.load_model(n_channels=self.n_channels,
+                            n_classes=self.n_classes,
+                            img_dim = self.img_dim)
         #self.model.eval()
         
     def load_data(self, 
@@ -115,16 +118,20 @@ class TrainModel():
         ''')
 
     def train(self, n_epochs=5, target_accuracy=None, learning_rate= 0.0001, data_aug=False):
-        threshold = 0.5        
+        if self.active_learning:
+            threshold = self.al_threshold
+        else:
+            threshold = 0.5
         #criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
         criterion = torch.nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        # try:
-        #     model, optimizer = ipex.optimize(model=self.model, optimizer=optimizer, dtype=torch.float32)
-        # except Exception as e:
-        #     print("IPEX error : Ignoring IPEX optimization")
-        #     model = self.model
+        
+        try:
+            self.model, optimizer = ipex.optimize(model=self.model, optimizer=optimizer, dtype=torch.float32)
+        except Exception as e:
+            print("IPEX error : Ignoring IPEX optimization")
         #     optimizer = optimizer
+        
         self.model.train()
         for epoch in range(1, n_epochs + 1):
             print(f"Epoch {epoch}/{n_epochs}:", end=" ")
@@ -148,9 +155,16 @@ class TrainModel():
                 
                 #print("Inputs shape is : ", inputs.shape)
                 #print("Mask shape is : ", labels.shape)
+                    
                 
                 optimizer.zero_grad()
                 masks = self.model(inputs).squeeze()
+                
+                        # Critical component of active learning
+                if self.active_learning:
+                    pred_threshold_mask = (masks>threshold)
+                    labels = torch.where(pred_threshold_mask, labels, torch.zeros_like(labels)) 
+                
                 loss = criterion(masks, labels)
                 loss.backward()
                 optimizer.step()
@@ -200,7 +214,7 @@ class TrainModel():
         metrics_val["Recall"] = recall_score(val_preds, val_labels, zero_division=0)
         metrics_val["Accuracy"] = accuracy_score(val_preds, val_labels )
         metrics_val["F1-Score"] = f1_score(val_preds, val_labels, average='weighted', zero_division=0)
-        
+    
         # Evaluate on the test dataset
         test_preds, test_labels,_ = self.predict(self.test_loader)
         test_preds = test_preds.reshape(-1)
@@ -217,7 +231,7 @@ class TrainModel():
 
         # Concatenate the dataframes to create a single dataframe
         evaluation_df = pd.concat([df_train, df_val, df_test])
-
+        evaluation_df.fillna(0, inplace=True)
         return evaluation_df
 
     def load_single_scan(self, 
@@ -238,6 +252,9 @@ class TrainModel():
     
     def predict(self, dataloader=None):
         # Function to generate predictions from the model for a given dataloader
+        # active inference and active learning
+        threshold = self.al_threshold
+
         predictions = []
         labels = []
         inputs = []
@@ -251,85 +268,4 @@ class TrainModel():
                 predictions.extend(masks.cpu().numpy())
                 labels.extend(batch['mask'].cpu().numpy())
                 inputs = inputs.cpu().numpy()
-        return (np.array(predictions) > 0.5).astype(int), np.array(labels), inputs  # Apply threshold for binary prediction
-    # # PRACTICALLY DONT NEED THIS FUNCTION IN ACTIVE INFERENCE 
-    # def evaluate(self):
-    #     """
-    #     This module will be responsible for evaluating the trained model and calculate the accuracy
-    #     Script to evaluate a model after training.
-    #     Outputs accuracy and balanced accuracy, draws confusion matrix.
-    #     """
-
-    #     self.model.to(self.device)
-    #     self.model.eval()
-
-    #     y_true = np.empty(shape=(0,))
-    #     y_pred = np.empty(shape=(0,))
-
-    #     for inputs, labels in self.test_loader:
-    #         inputs = inputs.to()
-    #         labels = labels.to()
-    #         start_time = time.time()
-    #         preds_probs = self.model(inputs)[0]
-    #         infer_time = time.time()-start_time
-    #         print('infer_time_per_sample=', infer_time)
-    #         preds_class = torch.argmax(preds_probs, dim=-1)
-    #         labels = labels.to("cpu").numpy()
-    #         preds_class = preds_class.detach().to("cpu").numpy()
-    #         y_true = np.concatenate((y_true, labels))
-    #         y_pred = np.concatenate((y_pred, preds_class))
-
-    #     accuracy = f1_score(y_true, y_pred)
-    #     balanced_accuracy = balanced_accuracy_score(y_true, y_pred)
-    #     print("f1 Accuracy Score: ", accuracy)
-    #     print("Balanced Accuracy: ", balanced_accuracy)
-    #     return accuracy, balanced_accuracy
-    
-    # # NOT LOCALIZING ANYTHING IN ACTIVE INFERENCE
-    # def predict_localize(self, thres=0.8, n_samples=9, show_heatmap=False):
-    #     """
-    #     Runs predictions for the samples in the dataloader.
-    #     Shows image, its true label, predicted label and probability.
-    #     If an anomaly is predicted, draws bbox around defected region and heatmap.
-    #     """
-    #     self.model.to(self.device)
-    #     self.model.eval()
-    #     transform_to_pil = transforms.ToPILImage()
-    #     n_cols = 4
-    #     n_rows = int(np.ceil(n_samples / n_cols))
-    #     plt.figure(figsize=[n_cols * 5, n_rows * 5])
-    #     counter = 0
-    #     for inputs, _ in self.test_loader:
-    #         inputs = inputs.to(self.device)
-    #         out = self.model(inputs)
-    #         _, class_preds = torch.max(out[0], dim=-1)
-    #         feature_maps = out[1].to(self.device)
-    #         for img_i in range(inputs.size(0)):
-    #             img = transform_to_pil(inputs[img_i])
-    #             class_pred = class_preds[img_i]
-    #             heatmap = feature_maps[img_i][self.neg_class].detach().cpu().numpy()
-    #             counter += 1
-    #             plt.subplot(n_rows, n_cols, counter)
-    #             plt.imshow(img)
-    #             plt.axis("off")
-
-    #             if class_pred == self.neg_class:
-    #                 x_0, y_0, x_1, y_1 = get_bbox_from_heatmap(heatmap, thres)
-    #                 rectangle = Rectangle(
-    #                     (x_0, y_0),
-    #                     x_1 - x_0,
-    #                     y_1 - y_0,
-    #                     edgecolor="red",
-    #                     facecolor="none",
-    #                     lw=3,
-    #                 )
-    #                 plt.gca().add_patch(rectangle)
-    #                 if show_heatmap:
-    #                     plt.imshow(heatmap, cmap="Reds", alpha=0.3)
-    #             if counter == n_samples:
-    #                 plt.tight_layout()
-    #                 plt.show()
-    #                 return
-    # # ADD ADDITIONAL LAYERS HERE IF USING BOTH ACTIVE AND SUPERVISED LEARNING
-    # def save_model(self, model_path):
-    #     torch.save(self.model, model_path)
+        return (np.array(predictions) > threshold).astype(int), np.array(labels), inputs  # Apply threshold for binary prediction

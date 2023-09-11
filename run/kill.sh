@@ -1,5 +1,6 @@
 #!/bin/bash
 
+docker rm -fv $(docker ps -a -q)    # Remove all containers
 # Stop and remove all Docker containers
 docker stop $(docker ps -a -q)  # Stop all containers
 docker rm -fv $(docker ps -a -q)    # Remove all containers

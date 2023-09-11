@@ -37,11 +37,11 @@ def synthetic_defects(img_dim, n_channels, scan_type, stat_features=True):
             # dampen the signal at random points
             dampen_width = math.ceil(n_channels//10)
             n_dampen_points = np.random.choice([1,2,3])
-            #if dampen_width>0:
-                #for i in range(n_dampen_points):
-                    #dampen_start = np.random.randint(0, n_channels - dampen_width - 1)
-                    #dampen_end = dampen_start + dampen_width
-                    #sine_wave[dampen_start:dampen_end] = 0
+            if dampen_width>0:
+                for i in range(n_dampen_points):
+                    dampen_start = np.random.randint(0, n_channels - dampen_width - 1)
+                    dampen_end = dampen_start + dampen_width
+                    sine_wave[dampen_start:dampen_end] = 0
         else:
             sine_wave += noise
         return sine_wave
@@ -130,17 +130,17 @@ def synthetic_defects(img_dim, n_channels, scan_type, stat_features=True):
         #print(df[df['defect'] == 2].shape)
         #print(np.random.choice([1, 2], size=(df['defect'] == 1).sum(), p=[0.5, 0.5]))
         # backwall
-        df.loc[df['defect'] == 1, 'backwall'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.2, 0.8])
-        df.loc[df['defect'] == 2, 'backwall'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.7, 0.3])
+        df.loc[df['defect'] == 1, 'qc1'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.2, 0.8])
+        df.loc[df['defect'] == 2, 'qc1'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.7, 0.3])
         # frontwall
-        df.loc[df['defect'] == 1, 'frontwall'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.3, 0.7])
-        df.loc[df['defect'] == 2, 'frontwall'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.8, 0.2])
+        df.loc[df['defect'] == 1, 'qc2'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.3, 0.7])
+        df.loc[df['defect'] == 2, 'qc2'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.8, 0.2])
         # ramp
-        df.loc[df['defect'] == 1, 'ramp'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.7, 0.3])
-        df.loc[df['defect'] == 2, 'ramp'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.2, 0.8])
+        df.loc[df['defect'] == 1, 'qc3'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.7, 0.3])
+        df.loc[df['defect'] == 2, 'qc3'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.2, 0.8])
         # geometry
-        df.loc[df['defect'] == 1, 'geometry'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.8, 0.2])
-        df.loc[df['defect'] == 2, 'geometry'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.3, 0.7])
+        df.loc[df['defect'] == 1, 'qc4'] = np.random.choice([0, 1], size=(df['defect'] == 1).sum(), p=[0.8, 0.2])
+        df.loc[df['defect'] == 2, 'qc4'] = np.random.choice([0, 1], size=(df['defect'] == 2).sum(), p=[0.3, 0.7])
         columns = ["qc1", "qc2", "qc3", "qc4", "min", "max", "mean", "std", "snr", "num_peaks",  "defect"]
         df = df[columns]
     return df.drop(columns = ["defect"]), df["defect"], pixelmap, columns
@@ -166,6 +166,7 @@ def append_data(data_path, data):
     If the specified `data_path` does not exist, a new pickle file will be created.
     If the file already exists, the new data will be appended to the existing data.
     """
+    print("In append data function")
     combined_data = pd.DataFrame()
     previousdatalen = 0
     # Check if the data file already exists

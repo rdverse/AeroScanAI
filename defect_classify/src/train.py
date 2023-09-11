@@ -50,20 +50,40 @@ class DefectClassify():
         """
         # Generating our data
         logger.info('Reading the dataset from %s...', append_path)
-        
-        if append_path != '':
+        append_datapoint = None
+        append_label = None
+        if os.path.exists(append_path) and append_path !='':
             print("Append file is specified")
             try:
-                data = pd.read_pickle(append_path)
+                append_datapoint = pd.read_pickle(append_path)
+                print("append ata columns")
+                print(append_datapoint.columns)
+                append_label = append_datapoint['defect']
+                append_datapoint.drop(columns = ['defect'], inplace=True)
+                #print(append_path)
+                #print(append_datapoint)
+                #print(append_label)
             except FileNotFoundError:
                 print("Append file not found")
                 #sys.exit(f'Data loading error, file not found at {file}')
-       
+        #print(append_path)
+        #print(append_datapoint)
+        #print(append_label)
         # TRAINING DATA
         X_train, self.y_train, pixelmap_train, columns = synthetic_defects(img_dim, n_channels, train_scan)
         X_test, self.y_test, pixelmap_test, columns = synthetic_defects(img_dim, n_channels, test_scan)
         # synthetic data
-            
+        print("columns of x_train and x_test are ", X_train.columns, X_test.columns)
+        if os.path.exists(append_path) and append_data!= '':
+            # concatenate train and new data
+            X_train = pd.concat([append_datapoint, X_train], ignore_index=True)
+            self.y_train = pd.concat([append_label, self.y_train], ignore_index=True)            
+        #print(X_train)
+        #print(self.y_train)
+        #print(X_test)
+        #print(self.y_test)
+        print("22columns of x_train and x_test are ", X_train.columns, X_test.columns)
+
         df_num_train = X_train.select_dtypes(['float', 'int', 'int32'])
         df_num_test = X_test.select_dtypes(['float', 'int', 'int32'])
         self.robust_scaler = RobustScaler()
@@ -110,7 +130,7 @@ class DefectClassify():
         xgb_model = xgb.train(self.parameters, xgb_train, num_boost_round=50)
         self.d4p_model = d4p.get_gbt_model_from_xgboost(xgb_model)
         print(xgb_model.get_fscore())
-        return xgb_model.get_fscore()
+        return xgb_model.get_fscore(), len(self.X_train_scaled_transformed)
 
     def validate(self):
         """_summary_

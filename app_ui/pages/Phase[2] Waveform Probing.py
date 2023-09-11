@@ -3,6 +3,7 @@ from PIL import Image
 import requests
 import pandas as pd
 import numpy as np
+import json
 # Set the title of the app
 st.title('Waveform Probing')
 
@@ -17,8 +18,9 @@ with app_tab:
         image = Image.open('./assets/waveform2.png')
         st.image(image)
         st.markdown("""
-                    ###### Phase 2 : 
+                    ###### Phase 2 : Waveform model training and inference
                     """)
+        
     with col22:
         st.markdown("""
             ##### Phase 2 : Analyze waveform of each pixel in a 3D scan. 
@@ -30,12 +32,11 @@ with app_tab:
     with cola1:
         test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
         train_scan = st.selectbox('Train Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="high_defect_scan")
-        append_path = st.text_input('Training Append Data File Path (If you appended new data below)', key='data', value='') 
         model_path = st.text_input('Model Save Path', key='model path', value='./box/models/waveform_probe/')
         
     with cola2:    
-        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=512, value=10, step=1)
-        img_dim = st.selectbox('Image Dimension', [8,16,32,"64",128,256,512], placeholder="64")
+        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=128, value=10, step=1)
+        img_dim = st.selectbox('Image Dimension', [8,16,32,64,128], placeholder="64")
         model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
         with st.expander("More info on data"):
             st.info("""
@@ -48,14 +49,8 @@ with app_tab:
     st.divider()
     st.markdown(
         """
-        #### Waveform model training
+        #### Model training results
         """    )
-    # Input data
-    # data_file = st.text_input('Training Data File Path', key='data', value='./box/datasets/waveform_probe/train.csv')
-    # model_path = st.text_input('Model Save Path', key='model path', value='./box/models/waveform_probe/')
-    # model_name = st.text_input('Model Name',key='model name', help='The name of the model without extensions', value='model')
-    # test_size = st.slider('Percentage of data saved for Testing',min_value=5, max_value=50, value=25, step=5)
-
     # Button to train the model
     if st.button('Train Model', key='training'):
         # Build the request
@@ -67,20 +62,18 @@ with app_tab:
                 'train_scan':train_scan,
                 'model_name':model_name, # 'model
                 'model_path':model_path, 
-                'append_path' : append_path,
+                'append_path' : "", # can be discarded - appending data at in the next phase makes more sense
                 'ncpu': 1}
         print(DATA)
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
-        print(TRAINING_RESPONSE)
-        st.info(TRAINING_RESPONSE)
         # Check the response status code
         if len(TRAINING_RESPONSE.text) < 40:       
             st.error("Model Training Failed")
-            st.info(TRAINING_RESPONSE.text)
         else:
-            st.success('Training was Succesful')
-            st.info(TRAINING_RESPONSE.text)
-            st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
+            st.success(TRAINING_RESPONSE.json().get('msg'))
+            bench_dict = TRAINING_RESPONSE.json().get('benchmarks')
+            for k, v in bench_dict.items():
+                st.info("{}: {:.3f}".format(k, v))
             
     # Separator
     st.divider()
@@ -100,7 +93,6 @@ with app_tab:
     with col22:
         st.info("Enter Y coordinate")
         y_coord = st.number_input('y coordinate', min_value=0, max_value=128, step=1, value=10)
-    #sample = [{'x_coord':10, 'y_coord':10}]
     sample = [{'x_coord':x_coord, 'y_coord':y_coord}]
     
     if st.button('Analyze waveform', key='analysis'):
@@ -114,11 +106,9 @@ with app_tab:
                 'y_coord' : y_coord ,
                 'num_class':2}
         INFERENCE_RESPONSE = requests.post(url = URL, json = DATA)
-        #print(INFERENCE_RESPONSE.json())
-        st.info(INFERENCE_RESPONSE.text)
+        st.success(INFERENCE_RESPONSE.json().get('msg'))
         ####################uncomment
         import ast
-        st.info(type(INFERENCE_RESPONSE.json().get('wavetoplot')))
         data = ast.literal_eval(INFERENCE_RESPONSE.json().get('wavetoplot'))
         feature_importance = ast.literal_eval(INFERENCE_RESPONSE.json().get('feature_importance'))
         data, feature_importance, time = np.array(data).reshape(-1,1), np.array(feature_importance).reshape(-1,1), np.arange(len(data)).reshape(-1,1)
@@ -133,19 +123,9 @@ with app_tab:
         with st.expander('More info on feature importance'):
             st.info("""
                     ###### Feature Importance
-                    Here we use LIME (local agnostic model explanation) to explain the model's prediction for a given input (i.e., the raw waveform).
+                    Here we use LIME (local interpretable model-agnostic model explanation) to explain the model's prediction for a given input (i.e., the raw waveform).
                     """)
-       ################## 
-        # print(INFERENCE_RESPONSE)
-        # st.info(INFERENCE_RESPONSE)
-        # st.info(INFERENCE_RESPONSE.text)
-        # if len(INFERENCE_RESPONSE.text) < 40:       
-        #     st.error("Inference Failed")
-        #     st.info(INFERENCE_RESPONSE.text)
-        # else:
-        #     print(INFERENCE_RESPONSE)#.json().get('wavetoplot')
-        #     #st.success(str(INFERENCE_RESPONSE.json().get('results')))
-        #     #st.line_chart()
+
     
 with help_tab:
     st.markdown("#### Importance of Waveform Probing")

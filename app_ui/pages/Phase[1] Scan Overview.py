@@ -5,25 +5,28 @@ import ast
 import pandas as pd
 import numpy as np
 import plotly.express as px
-# Set the title of the app
+import matplotlib.pyplot as plt
+from skimage.transform import resize
+
+#Set the title of the app
 st.title('Scan Anomaly Detection')
 
 # Create two tabs: "Application" and "Help"
 app_tab, help_tab = st.tabs(["Application", "Help"])
-
 # "Application" tab
 with app_tab:
     # Header image
     col11, col22 = st.columns(2)
     with col11:
-        image = Image.open('./assets/waveform2.png')
+        image = Image.open('./assets/space.jpg')
         st.image(image)
         st.markdown("""
-                    ###### 3D-UNet model with adaptive input training
+                    ###### 3D-UNet model with adaptive input training and active learning.
                     """)
     with col22:
         st.markdown("""
             ##### Phase 1 : Train a model using 3D scans with defects and without defects.
+            Here we also employ an active learning approach that relies on the user to set a prediction threshold and learn to differentiate between defects and no defects without labels.
             This gives an overview of the data and the areas that might potentially have a defect.   
             """)
         
@@ -31,9 +34,10 @@ with app_tab:
     
     with cola1:
         st.info("Model Parameters")
-        
         model_name = st.text_input('Model Name',key='model name', help='The name of the model (change when re-training)', value='model')
         model_path = st.text_input('Model Save Path', key='model path', value='./box/models/scan_anomaly/')
+        active_learning = st.selectbox('Active Learning', ["True", "False"], placeholder="False")
+        al_threshold = st.slider('Active Learning Prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)
         #test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
         st.info("Training Parameters")
         n_cpus = st.slider('Number of CPUs',min_value=1, max_value=128, value=1, step=1)
@@ -42,19 +46,27 @@ with app_tab:
 
     with cola2:    
         st.info("Data Parameters")
-        n_channels = st.slider('Number of channels in waveform',min_value=1, max_value=512, value=10, step=1)
-        n_classes = st.selectbox('Number of classes', [1], placeholder="1")
-        n_samples = st.slider('Number of samples',min_value=100, max_value=10000, value=100, step=100)
-        img_dim = st.selectbox('Image Dimension', [16,32,64,128,256,512], placeholder="64")
-        percent_test = st.slider('Percentage of data saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
-        #with st.expander("More info on data"):
-            
+        n_channels = st.slider('Number of Channels in Waveform',min_value=1, max_value=124, value=10, step=1)
+        n_classes = st.selectbox('Number of Classes', [1], placeholder="1")
+        n_samples = st.slider('Number of Samples',min_value=100, max_value=10000, value=100, step=100)
+        img_dim = st.selectbox('Image Dimension', [16,32,64,128], placeholder="64")
+        percent_test = st.slider('Percentage of Data Saved for Testing',min_value=0.1, max_value=0.5, value=0.3, step=0.1)
+        with st.expander("More Info on Active Learning"):
+            st.info("""
+                    ###### Here we implement a simple active learning approach to train the model without labels.
+                    ###### The user sets a prediction threshold and the ground truth then becomes the points where the prediction probability are greater than threshold.
+                    ###### After iteratively training the model, the user may be able to train the model to identify defects without any labelled data.
+                    ###### Alternatively, if the Active Learning knob is turned off, the model trains like a traditional supervised learning model.
+                    """)
+    
     # Button to train the model
     if st.button('Train Model', key='training'):
         # Build the request
         URL = 'http://scan_anomaly:5003/train'
     
-        DATA = { 'img_dim':img_dim, 
+        DATA = {'active_learning':active_learning,
+                'al_threshold':al_threshold,  
+                'img_dim':img_dim, 
                 'n_channels':n_channels,
                 'n_classes':n_classes,
                 'n_samples':n_samples,
@@ -65,7 +77,6 @@ with app_tab:
                 'batch_size': batch_size,
                 'percent_test': percent_test
                 }
-
         TRAINING_RESPONSE = requests.post(url=URL, json=DATA)
         
         st.divider()
@@ -86,11 +97,12 @@ with app_tab:
         """
         #### Visualize the defects on a test scan
         """    )     
-        
+    al_threshold = st.slider('Active Inference Prediction Threshold',min_value=0.1, max_value=0.9, value=0.5, step=0.1)    
     test_scan = st.selectbox('Test Scan', ["low_defect_scan", "medium_defect_scan","high_defect_scan", "random"], placeholder="low_defect_scan")
     if st.button('Visualize', key='predict_visualize'):
         URL = 'http://scan_anomaly:5003/predict'
-        DATA = {'model_name': model_name, 
+        DATA = {'al_threshold':al_threshold, 
+                'model_name': model_name, 
                 'model_path':model_path,
                 'n_channels': n_channels, 
                 'img_dim': img_dim, 
@@ -111,131 +123,51 @@ with app_tab:
             labels = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('labels'))).squeeze()*255
             inputs = np.array(ast.literal_eval(INFERENCE_RESPONSE.json().get('inputs'))).squeeze()
             colb1, colb2, colb3 = st.columns(3)
-            with colb1:
-                st.info("Input")
-                st.image(inputs)
-            with colb2:
-                st.info("Prediction")
-                st.image(preds)
-            with colb3:
-                st.info("Ground Truth")
-                st.image(labels)
-                
-            # st.image(preds)
-            # st.info(str(preds.shape))
-            # st.info(str(labels.shape))
-            # st.info(str(inputs.shape))
-            #st.info("min and max of inputs: " + str(np.min(inputs)) + " " + str(np.max(inputs)))
-            st.info("min and max of preds: " + str(np.min(preds)) + " " + str(np.max(preds)))
-            st.info("min and max of labels: " + str(np.min(labels)) + " " + str(np.max(labels)))
-            from collections import Counter
-            st.info("Counter of preds: " + str(Counter(preds.flatten())))
-            st.info("Counter of labels: " + str(Counter(labels.flatten())))
-            # st.info(str(inputs))
-            st.info(str(preds))
-            st.info(str(labels))
-            
-                    # Sample image data
-            image = np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8)
-            import matplotlib.pyplot as plt
-            # Create a Matplotlib figure
-            fig, ax = plt.subplots()
-            ax.imshow(image)
-            ax.set_xticks(np.arange(0, len(image[0]), 10))
-            ax.set_yticks(np.arange(0, len(image), 10))
-            ax.grid(which='both', color='white', linewidth=1)
-
-            st.pyplot(fig)
-            
-            
-            image = np.random.randint(0, 256, (256, 256), dtype=np.uint8)
-            
-            # Create a Plotly heatmap for image display
-            fig = px.imshow(image, color_continuous_scale="gray")
-            fig.update_layout(
-                title="Hover over the heatmap",
+            preds, labels, inputs = resize(preds, (64,64), anti_aliasing=True), resize(labels, (64,64), anti_aliasing=True), resize(inputs, (64,64), anti_aliasing=True)
+    #        with colb1:
+            st.info("Input test scan : {} ".format(test_scan))
+            #st.image(inputs)
+        # Create a Plotly heatmap for image display
+            figI = px.imshow(inputs, color_continuous_scale="viridis")
+            figI.update_layout(
+                title="Test Scan Under Analysis : {} ".format(test_scan),
                 xaxis_title="X Coordinate",
                 yaxis_title="Y Coordinate",
             )
-
-            # Display the Plotly figure
-            st.plotly_chart(fig)
-                # st.image(labels)
-            # st.image(inputs)
-            #st.info('Model Validation Accuracy Score: ' + str(TRAINING_RESPONSE.json().get('validation scores')))
+            st.plotly_chart(figI)
+    
+    #        with colb2:
+            st.info("Model prediction")
+            figP = px.imshow(preds, color_continuous_scale="gray")
+            figP.update_layout(
+                title="Predicted Defects (in white pixels)",
+                xaxis_title="X Coordinate",
+                yaxis_title="Y Coordinate",
+            )
+            st.plotly_chart(figP)
+    #        st.image(preds)
+    
+    #        with colb3:
+            #st.info("Ground Truth")
+            figL = px.imshow(labels, color_continuous_scale="gray")
+            figL.update_layout(
+                title="Ground Truth of the Scan (white pixels are defects)",
+                xaxis_title="X Coordinate",
+                yaxis_title="Y Coordinate",
+            )
+            st.plotly_chart(figL)
             
-#     # Separator
-#     st.divider()
-#     st.markdown(
-#         """
-#         #### Waveform defect prediction and interpretation using explainable-AI.
-#         """
-#     )
+            with st.expander('Note'):
+                st.info(""" 1. Due to the screen size limitations all images are scaled to 64px for consistency.
+                            2. The input test scan that has a 3d structure is converted to a 2d image by computing the standard deviation for plotting.
+                        """)
 
-#     model_name = st.text_input('Selected Model Name',key='model name selection', value='model')
-#     model_path = st.text_input('Selected Model Path',key='model path selection', value='./box/models/scan_anomaly/')
-#     col21, col22, col23 = st.columns(3)
-
-#     with col21:
-#         st.info("Inspector's Input")
-#         x_coord = st.number_input("x coordinate", min_value=0, max_value=128, step=1, value=10)
-#     with col22:
-#         st.info("Enter Y coordinate")
-#         y_coord = st.number_input('y coordinate', min_value=0, max_value=128, step=1, value=10)
-#     #sample = [{'x_coord':10, 'y_coord':10}]
-#     sample = [{'x_coord':x_coord, 'y_coord':y_coord}]
-    
-#     if st.button('Analyze waveform', key='analysis'):
-#         URL = 'http://scan_anomaly:5003/predict'
-#         DATA = {'model_name': model_name, 
-#                 'model_path':model_path,
-#                 'n_channels': n_channels, 
-#                 'img_dim': img_dim, 
-#                 'test_scan' : test_scan, 
-#                 'x_coord':x_coord , 
-#                 'y_coord' : y_coord ,
-#                 'num_class':2}
-#         INFERENCE_RESPONSE = requests.post(url = URL, json = DATA)
-#         #print(INFERENCE_RESPONSE.json())
-#         st.info(INFERENCE_RESPONSE.text)
-#         ####################uncomment
-#         import ast
-#         st.info(type(INFERENCE_RESPONSE.json().get('wavetoplot')))
-#         data = ast.literal_eval(INFERENCE_RESPONSE.json().get('wavetoplot'))
-#         feature_importance = ast.literal_eval(INFERENCE_RESPONSE.json().get('feature_importance'))
-#         data, feature_importance, time = np.array(data).reshape(-1,1), np.array(feature_importance).reshape(-1,1), np.arange(len(data)).reshape(-1,1)
-#         dataImpDF = pd.DataFrame(np.hstack((data, feature_importance, time)), columns = ['Amplitude', 'Feature Importance', 'Time'])
-        
-#         st.line_chart(dataImpDF, 
-#                       y = 'Amplitude',
-#                       x = 'Time')
-#         st.bar_chart(dataImpDF, 
-#                      y = 'Feature Importance',
-#                      x = 'Time')
-#         with st.expander('More info on feature importance'):
-#             st.info("""
-#                     ###### Feature Importance
-#                     Here we use LIME (local agnostic model explanation) to explain the model's prediction for a given input (i.e., the raw waveform).
-#                     """)
-#        ################## 
-#         # print(INFERENCE_RESPONSE)
-#         # st.info(INFERENCE_RESPONSE)
-#         # st.info(INFERENCE_RESPONSE.text)
-#         # if len(INFERENCE_RESPONSE.text) < 40:       
-#         #     st.error("Inference Failed")
-#         #     st.info(INFERENCE_RESPONSE.text)
-#         # else:
-#         #     print(INFERENCE_RESPONSE)#.json().get('wavetoplot')
-#         #     #st.success(str(INFERENCE_RESPONSE.json().get('results')))
-#         #     #st.line_chart()
-    
-# with help_tab:
-#     st.markdown("#### Importance of Waveform Probing")
-#     st.markdown(        """
-#         #### Why is it important to analyze the waveform of each pixel in a 3D scan?
-#         #####  The waveform of each pixel in a 3D scan has immense information about the defect or a normal signal. 
-#         ##### Therefore, we first train an random forest model and pick the optimal configuration using grid search.
-#         ##### Next, we use explainable-AI such as LIME to interpret the model's prediction for a given input (i.e., the raw waveform).
-#         ##### This helps us understand what parts of the waveform were given most importance for the prediction.
-#         ##### To interpret this plot, .
-#     """)
+with help_tab:
+    st.markdown("#### Importance of Waveform Probing")
+    st.markdown(        """
+        #### This is the start of inspection where a model predicts on a scan-level if there is a defect or not.
+        ##### The model takes input as a 3D scan. 
+        ##### Each pixel is a waveform of n points defined by the user.
+        ##### Thanks to UNet's adaptable architecture, by adjusting the layers according to the input size, we can use the same model architecture for different input sizes.
+        ##### However, it is important to note that the smaller the input, smaller will be the model. 
+    """)
